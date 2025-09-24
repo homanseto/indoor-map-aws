@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+  web:
+    build: ./
+    image: "indoor_app:latest"
+    container_name: web
+    ports:
+      - "80:3000"
+    env_file:
+      - .env
+    environment:
+      - MONGO_URL=${MONGO_URL}
+      - POSTGIS_URL=${POSTGIS_URL}
+    depends_on:
+      - mongo
+      - postgis
+    networks:
+      - backend_network
+
+  mongo:
+    image: mongo:noble
+    container_name: mongodb
+    restart: on-failure
+    volumes:
+      - ./mongodb-data:/data/db # Bind the volume to a folder in your project
+    env_file:
+      - .env
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE}
+    # No ports exposed for MongoDB in production
+    networks:
+      - backend_network
+  # postgis-data:
+  postgis:
+    image: postgis/postgis:16-master
+    container_name: postgis
+    restart: on-failure
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    # No ports exposed for PostGIS in production
+    volumes:
+      - ./postgis-data:/var/lib/postgresql/data
+    networks:
+      - backend_network
+
+networks:
+  backend_network:
+    driver: bridge

@@ -1,0 +1,38 @@
+{
+  "name": "express-es6-skeleton",
+  "version": "0.2.0",
+  "type": "module",
+  "private": true,
+  "description": "Express app using ES modules and modern JS",
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "cookie-parser": "~1.4.4",
+    "debug": "~2.6.9",
+    "dotenv": "^17.2.2",
+    "express": "~4.16.1",
+    "mongodb": "^6.20.0",
+    "morgan": "~1.9.1",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "jest": "^29.0.2",
+    "nodemon": "^2.0.2"
+  },
+  "scripts": {
+    "start": "NODE_ENV=production node ./server/bin/www",
+    "dev": "NODE_ENV=development nodemon ./server/bin/www",
+    "test": "jest"
+  },
+  "jest": {
+    "testEnvironment": "node"
+  }
+}
+
+[{
+  "userName":"admin",
+  "password":"3dmP@ssw0rd",
+},{
+  "userName":"admin",
+  "password":"3dmP@ssw0rd",
+}]
