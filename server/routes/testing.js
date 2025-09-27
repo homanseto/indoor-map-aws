@@ -2,6 +2,8 @@ import express from "express";
 import { MongoClient } from "mongodb";
 import { Pool } from "pg";
 
+import { JsonFileService } from "../services/JsonFileService.js";
+
 const router = express.Router();
 
 const mongoUrl = process.env.MONGO_URL;
@@ -36,6 +38,25 @@ router.get("/test-db", async (req, res) => {
   }
 
   res.json({ mongo: mongoResult, postgis: pgResult });
+});
+
+// GET /test-read-json?file=filename.json
+
+// GET /test-read-json?file=filename.json
+router.get("/test-read-json", async (req, res) => {
+  const filePath = req.query.filePath;
+  if (!filePath) {
+    return res.status(400).json({ error: "Missing 'file' query parameter" });
+  }
+  const jsonService = new JsonFileService();
+  try {
+    const json = await jsonService.readJson(filePath);
+    console.log("Read JSON from", filePath, ":", json);
+    res.json(json);
+  } catch (err) {
+    console.error("Error reading JSON file:", err.message);
+    res.status(500).json({ error: "Failed to read or parse file" });
+  }
 });
 
 // Optionally, keep the home page route if needed

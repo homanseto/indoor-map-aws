@@ -24,6 +24,8 @@ postgis-data/
 *.db
 data/
 
+# testing
+./testing-data
 # VSCode
 .vscode/
 

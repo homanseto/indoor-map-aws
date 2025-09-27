@@ -37,6 +37,11 @@ let buildingNetworkCache = new Map(); // Map<buildingName, networkData>
 const TKOGOVENUEID = `e82ec75f-5b51-48a6-bfe0-c4f039e58420`;
 const TKOGOMTRID = `bbcde31e-3b2d-46e5-9eca-dbc2ce387162`;
 
+// Configurable API base URL for backend
+// Use http://localhost:3001 for local debug, "" for production/Docker
+const API_BASE_URL =
+  window.location.port === "3001" ? "http://localhost:3001" : "";
+
 // API endpoints
 const venuePolygonApi =
   "https://mapapi.hkmapservice.gov.hk/ogc/wfs/indoor/venue_polygon";
@@ -751,8 +756,9 @@ function getVenueStatus() {
 async function fetchBuildingNetwork(buildingName) {
   try {
     const encodedName = encodeURIComponent(buildingName);
+
     const response = await fetch(
-      `/api/indoor-network/building?buildingName=${encodedName}`
+      `${API_BASE_URL}/api/indoor-network/building?buildingName=${encodedName}`
     );
 
     if (!response.ok) {
@@ -1543,6 +1549,26 @@ async function setupDemoVenues() {
  */
 (async function () {
   try {
+    // Reminder: API_BASE_URL is set to http://localhost:3001 for debug, "" for Docker/production
+    console.log(`API_BASE_URL for backend API calls: '${API_BASE_URL}'`);
+
+    // Test backend/frontend connection
+    try {
+      const testDbResponse = await fetch(`${API_BASE_URL}/api/test/test-db`);
+      if (testDbResponse.ok) {
+        const testDbResult = await testDbResponse.json();
+        console.log("Backend /api/test/test-db result:", testDbResult);
+      } else {
+        console.warn(
+          "/api/test/test-db failed:",
+          testDbResponse.status,
+          testDbResponse.statusText
+        );
+      }
+    } catch (err) {
+      console.error("Error calling /api/test/test-db:", err);
+    }
+
     // Initialize the demo
     await initDemo();
 

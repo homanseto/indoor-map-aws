@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login</title>
+    <link rel="stylesheet" href="/stylesheets/style.css" />
+    <style>
+      .login-container {
+        max-width: 400px;
+        margin: 80px auto;
+        padding: 2em;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      .login-container h2 {
+        text-align: center;
+        margin-bottom: 1em;
+      }
+      .login-container .error {
+        color: #c00;
+        margin-bottom: 1em;
+        text-align: center;
+      }
+      .login-container label {
+        display: block;
+        margin-bottom: 0.5em;
+      }
+      .login-container input[type="text"],
+      .login-container input[type="password"] {
+        width: 100%;
+        padding: 0.5em;
+        margin-bottom: 1em;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      .login-container button {
+        width: 100%;
+        padding: 0.7em;
+        background: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        font-size: 1em;
+        cursor: pointer;
+      }
+      .login-container button:disabled {
+        background: #aaa;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="login-container">
+      <h2>Login</h2>
+      <form id="loginForm">
+        <div class="error" id="errorMsg" style="display: none"></div>
+        <label for="userName">Username</label>
+        <input
+          type="text"
+          id="userName"
+          name="userName"
+          required
+          autocomplete="username"
+        />
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          required
+          autocomplete="current-password"
+        />
+        <button type="submit">Login</button>
+      </form>
+    </div>
+    <script src="./js/login.js"></script>
+  </body>
+</html>
