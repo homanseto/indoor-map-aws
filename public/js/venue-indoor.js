@@ -630,7 +630,7 @@ export class VenueIndoor {
       )
     );
     const values = await Promise.all(results.map((p) => p.json()));
-
+    console.log(values);
     // Cache the fetched GeoJSON data
     let i = 0;
     Object.keys(this.#indoorAPIs).forEach((featureCategory) => {

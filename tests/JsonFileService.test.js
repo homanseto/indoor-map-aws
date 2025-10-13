@@ -4,7 +4,7 @@ import path from "path";
 
 describe("JsonFileService", () => {
   const testDir = "./testing-data";
-  const testFile = "test-simple.json";
+  const testFile = "testing.json";
   const testFilePath = path.join(testDir, testFile);
   const testData = { hello: "world" };
 
@@ -19,7 +19,7 @@ describe("JsonFileService", () => {
 
   it("reads a valid JSON file", async () => {
     const service = new JsonFileService(testDir);
-    const data = await service.readJson(testFile);
+    const data = await service.readJson(testFilePath);
     expect(data).toEqual(testData);
   });
 

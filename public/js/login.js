@@ -3,25 +3,44 @@
 const API_BASE_URL =
   window.location.port === "3001" ? "http://localhost:3001" : "";
 
-document.addEventListener("DOMContentLoaded", function () {
-  const loginForm = document.getElementById("loginForm");
-  if (!loginForm) return;
+// login.js: Attach login logic after modal is injected
+console.log("[login.js] Loaded.");
+const loginForm = document.getElementById("loginForm");
+if (!loginForm) {
+  console.error("[login.js] loginForm not found!");
+} else {
+  console.log("[login.js] loginForm found.");
   let csrfToken = null;
+  const csrfInput = document.getElementById("csrfTokenInput");
+  const loginButton = loginForm.querySelector('button[type="submit"]');
+  loginButton.disabled = true;
 
-  // Fetch CSRF token on page load
+  // Fetch CSRF token on modal load
+  console.log("[login.js] Fetching CSRF token...");
   fetch(`${API_BASE_URL}/api/account/csrf-token`, {
     credentials: "same-origin",
   })
     .then((res) => res.json())
     .then((data) => {
       csrfToken = data.csrfToken;
+      csrfInput.value = csrfToken;
+      loginButton.disabled = false;
+      console.log("[login.js] CSRF token fetched:", csrfToken);
+    })
+    .catch((err) => {
+      console.error("[login.js] Failed to fetch CSRF token:", err);
     });
 
   loginForm.addEventListener("submit", async function (e) {
     e.preventDefault();
-    const userName = document.getElementById("userName").value;
-    const password = document.getElementById("password").value;
     const errorMsg = document.getElementById("errorMsg");
+    if (!csrfInput.value) {
+      errorMsg.textContent = "CSRF token missing. Please reload.";
+      errorMsg.style.display = "block";
+      return;
+    }
+    const username = document.getElementById("userName").value;
+    const password = document.getElementById("password").value;
     errorMsg.style.display = "none";
     try {
       if (!csrfToken) {
@@ -36,12 +55,16 @@ document.addEventListener("DOMContentLoaded", function () {
           "Content-Type": "application/json",
           "X-CSRF-Token": csrfToken,
         },
-        body: JSON.stringify({ userName, password }),
+        body: JSON.stringify({ username, password }),
         credentials: "same-origin",
       });
       const data = await res.json();
       if (res.ok) {
-        window.location.href = "/";
+        // Remove login modal
+        const modal = document.getElementById("loginModalMount");
+        if (modal) modal.remove();
+        // Trigger main app load and fly-to
+        if (window.onLoginSuccess) window.onLoginSuccess();
       } else {
         errorMsg.textContent = data.error || "Login failed";
         errorMsg.style.display = "block";
@@ -51,4 +74,4 @@ document.addEventListener("DOMContentLoaded", function () {
       errorMsg.style.display = "block";
     }
   });
-});
+}

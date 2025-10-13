@@ -1,29 +1,35 @@
 import express from "express";
 import bcrypt from "bcrypt";
-import { Pool } from "pg";
+import { PostgisService } from "../dbServices/PostgisService.js";
 import jwt from "jsonwebtoken";
+import { POSTGIS_TABLE } from "../../config/postgistable.js";
 
 const router = express.Router();
 
-const pgPool = new Pool({
-  host: process.env.POSTGIS_HOST,
-  port: process.env.POSTGIS_PORT,
-  user: process.env.POSTGRES_USER,
-  password: process.env.POSTGRES_PASSWORD,
-  database: process.env.POSTGRES_DB,
-});
+const postgisService = new PostgisService();
 
+// GET /api/account/status - check if user is logged in (valid JWT)
+
+router.get("/status", (req, res) => {
+  const token = req.cookies?.token;
+  if (!token) return res.json({ loggedIn: false });
+  try {
+    jwt.verify(token, process.env.JWT_SECRET);
+    res.json({ loggedIn: true });
+  } catch {
+    res.json({ loggedIn: false });
+  }
+});
 // POST /api/account/login
 router.post("/login", async (req, res) => {
-  const { userName, password } = req.body;
-  if (!userName || !password) {
+  const { username, password } = req.body;
+  if (!username || !password) {
     return res.status(400).json({ error: "Missing required fields" });
   }
   try {
-    const result = await pgPool.query(
-      "SELECT * FROM userinformation WHERE userName = $1",
-      [userName]
-    );
+    // Use parameterized query to avoid SQL injection
+    const sql = `SELECT * FROM ${POSTGIS_TABLE.USERINFORMATION} WHERE userName = $1`;
+    const result = await postgisService.query(sql, [username]);
     const user = result.rows[0];
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials" });
@@ -33,13 +39,12 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
     // Update last_login timestamp
-    await pgPool.query(
-      "UPDATE userinformation SET last_login = NOW() WHERE id = $1",
-      [user.id]
-    );
+    // Use parameterized query to avoid SQL injection
+    const updateSql = `UPDATE ${POSTGIS_TABLE.USERINFORMATION} SET last_login = NOW() WHERE id = $1`;
+    await postgisService.query(updateSql, [user.id]);
     // Create JWT
     const token = jwt.sign(
-      { id: user.id, userName: user.userName, role: user.role },
+      { id: user.id, username: user.username, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );

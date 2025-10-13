@@ -1,3 +1,64 @@
+## Best Practices: Modular UI Components and Selection Bar Logic in Cesium Indoor Viewer
+
+### Where to Store HTML Fragments (Selection Bar, Toolbars, etc.)
+
+- **Dedicated Folder:**
+
+  - If you plan to have multiple reusable HTML fragments (e.g., toolbars, dialogs, controls), create a folder such as `public/html/` or `public/components/` to store them. This keeps your project organized and makes it easier to manage and import these fragments into `indoor-viewer.html` or other pages.
+  - For small projects with only one or two fragments, you could place them directly in `public/`, but a dedicated folder is better for scalability and maintainability.
+
+- **Importing Fragments:**
+  - You can import or inject these HTML fragments into your main HTML file (`indoor-viewer.html`) as needed, using JavaScript (e.g., fetch/insert, or with frameworks).
+
+### Where to Implement Selection Bar Logic
+
+- **Encapsulation in Class:**
+
+  - In `venue-indoor.js`, the level selection UI and its logic are encapsulated within the `VenueIndoor` class (see methods like `initVenueOption`).
+  - For consistency and maintainability, implement the selection bar logic (event listeners, filtering, etc.) within the `BuildingIndoor` class. This keeps all building-specific UI and logic together and modular.
+
+- **UI/Logic Separation:**
+  - The UI (HTML) for the selection bar can be a separate file or inline in `indoor-viewer.html`, but the logic for updating/filtering levels should be in your JavaScript class/module.
+
+### Summary of Best Practice
+
+- Store reusable HTML fragments in a dedicated folder (e.g., `public/html/`).
+- Implement the selection bar’s UI logic (creation, event handling, filtering) as methods inside the relevant class (e.g., `BuildingIndoor`).
+- Import or inject the HTML fragment into your main page as needed, then let the class handle its behavior.
+
+**This approach keeps your codebase modular, maintainable, and scalable as your project grows.**
+
+## The `window` Object in This Project
+
+In browser-based JavaScript, `window` is the global object representing the browser window. Any property or function assigned to `window` becomes globally accessible from anywhere in the page, including the browser console and other scripts.
+
+### Why Use `window` in This Project?
+
+- **Global Access:** By assigning functions and variables (like `clearAllVenues`, `getVenueStatus`, `activeVenues`, etc.) to `window`, you make them accessible from the browser console and other scripts. This is useful for debugging, interactive demos, or exposing controls for UI integration.
+- **Example:**
+
+  ```js
+  window.clearAllVenues = clearAllVenues;
+  window.getVenueStatus = getVenueStatus;
+  window.activeVenues = activeVenues;
+  window.activeMTRStations = activeMTRStations;
+  ```
+
+  After this code runs, you can call `clearAllVenues()` or inspect `activeVenues` directly from the browser console.
+
+### Pros
+
+- Makes debugging and testing easier.
+- Allows for quick prototyping and manual control.
+
+### Cons
+
+- Can lead to naming conflicts if not managed carefully.
+- Not recommended for production code unless you need global access for specific reasons.
+
+**In summary:**
+Using `window` in this way is a practical approach for demos and development, but should be used with care in larger or production applications.
+
 ## How csurf({ cookie: true }) Works (Deep Dive)
 
 ## Cookie Security: Regular vs. httpOnly Cookies

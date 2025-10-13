@@ -22,9 +22,15 @@ services:
     image: mongo:noble
     container_name: mongodb
     restart: on-failure
+    # need to generate keyfile and mount it for replica set authentication
+    #(openssl rand -base64 756 > mongo-keyfile
+    # chmod 400 mongo-keyfile)
+    command: ["mongod", "--replSet", "rs0", "--keyFile", "/data/keyfile"]
+
     volumes:
       - ./mongodb-data:/data/db # Bind the volume to a folder in your project
       - ./mongo-init:/docker-entrypoint-initdb.d # Mount init scripts
+      - ./mongo-keyfile:/data/keyfile:ro
     env_file:
       - .env
     environment:
@@ -32,7 +38,7 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
       - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE}
     ports:
-      - "27018:27017"
+      - "27017:27017"
     networks:
       - backend_network
   # postgis-data:

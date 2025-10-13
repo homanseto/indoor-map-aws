@@ -1,0 +1,35 @@
+/* Z-Clipping Bar Styles */
+.z-clipping-bar-container {
+  position: absolute;
+  left: 24px;
+  bottom: 24px;
+  z-index: 1100;
+  background: rgba(30, 30, 40, 0.95);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  padding: 18px 22px 14px 22px;
+  min-width: 220px;
+  color: #fff;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+.z-clipping-bar-container .form-label {
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.z-clipping-bar-container .slider-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.z-clipping-bar-container input[type="range"] {
+  width: 120px;
+}
+.z-clipping-bar-container .slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9em;
+  color: #bbb;
+  margin-top: 2px;
+}

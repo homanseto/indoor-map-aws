@@ -25,11 +25,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-app.get("/", requireAuth, (req, res) => {
+app.get("/", (req, res) => {
   res.sendFile(path.resolve("public/indoor-viewer.html"));
 });
 
-app.get("/indoor-viewer.html", requireAuth, (req, res) => {
+app.get("/indoor-viewer.html", (req, res) => {
   res.sendFile(path.resolve("public/indoor-viewer.html"));
 });
 
@@ -42,7 +42,8 @@ app.use((req, res, next) => {
   // Skip CSRF(Cross-Site Request Forgery) for initial admin creation and external-protected and CSRF will not check get requests
   if (
     req.path === "/api/admin/create-initial-admin" ||
-    req.path === "/api/smo3dm/external-protected"
+    req.path === "/api/smo3dm/external-protected" ||
+    req.path.includes("/api/test")
   ) {
     return next();
   }

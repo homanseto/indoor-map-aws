@@ -70,8 +70,15 @@ async function initDemo() {
     `${venuePolygonApi}?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsname=EPSG:4326&count=5000`
   );
   const venueResponse = await fetch(queryUrl);
+  const venueResponseFromServer = await fetch(
+    `${API_BASE_URL}/api/smo3dm/venues`,
+    {
+      credentials: "same-origin",
+    }
+  );
+  const venueData = await venueResponseFromServer.json();
   const venueGeoJson = await venueResponse.json();
-
+  // console.log(venueGeoJson);
   // Load MTR venue polygon data
   const MTRqueryUrl = encodeURI(
     `${MTRvenuePolygonApi}?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsname=EPSG:4326&count=5000`

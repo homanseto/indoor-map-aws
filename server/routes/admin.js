@@ -1,17 +1,12 @@
 import express from "express";
 import bcrypt from "bcrypt";
-import { Pool } from "pg";
+import { PostgisService } from "../dbServices/PostgisService.js";
 import jwt from "jsonwebtoken";
+import { POSTGIS_TABLE } from "../../config/postgistable.js";
 
 const router = express.Router();
 
-const pgPool = new Pool({
-  host: process.env.POSTGIS_HOST,
-  port: process.env.POSTGIS_PORT,
-  user: process.env.POSTGRES_USER,
-  password: process.env.POSTGRES_PASSWORD,
-  database: process.env.POSTGRES_DB,
-});
+const postgisService = new PostgisService();
 
 // POST /api/admin/create-user
 router.post("/create-user", adminOnly, async (req, res) => {
@@ -26,18 +21,16 @@ router.post("/create-user", adminOnly, async (req, res) => {
   }
   try {
     // Check for duplicate userName
-    const existing = await pgPool.query(
-      "SELECT 1 FROM userinformation WHERE userName = $1",
-      [userName]
-    );
+    // Use parameterized query to avoid SQL injection
+    const checkSql = `SELECT 1 FROM ${POSTGIS_TABLE.USERINFORMATION} WHERE userName = $1`;
+    const existing = await postgisService.query(checkSql, [userName]);
     if (existing.rowCount > 0) {
       return res.status(409).json({ error: "Username already exists" });
     }
     const hash = await bcrypt.hash(password, 10);
-    await pgPool.query(
-      "INSERT INTO userinformation (userName, password, role) VALUES ($1, $2, $3)",
-      [userName, hash, role]
-    );
+    // Use parameterized query to avoid SQL injection
+    const insertSql = `INSERT INTO ${POSTGIS_TABLE.USERINFORMATION} (userName, password, role) VALUES ($1, $2, $3)`;
+    await postgisService.query(insertSql, [userName, hash, role]);
     res.json({ message: "User created" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -73,18 +66,16 @@ router.post("/create-initial-admin", async (req, res) => {
   }
   try {
     // Check for duplicate userName
-    const existing = await pgPool.query(
-      "SELECT 1 FROM userinformation WHERE userName = $1",
-      [userName]
-    );
+    // Use parameterized query to avoid SQL injection
+    const checkSql = `SELECT 1 FROM ${POSTGIS_TABLE.USERINFORMATION} WHERE userName = $1`;
+    const existing = await postgisService.query(checkSql, [userName]);
     if (existing.rowCount > 0) {
       return res.status(409).json({ error: "Username already exists" });
     }
     const hash = await bcrypt.hash(password, 10);
-    await pgPool.query(
-      "INSERT INTO userinformation (userName, password, role) VALUES ($1, $2, $3)",
-      [userName, hash, role]
-    );
+    // Use parameterized query to avoid SQL injection
+    const insertSql = `INSERT INTO ${POSTGIS_TABLE.USERINFORMATION} (userName, password, role) VALUES ($1, $2, $3)`;
+    await postgisService.query(insertSql, [userName, hash, role]);
     res.json({ message: "Initial admin user created" });
   } catch (err) {
     res.status(500).json({ error: err.message });

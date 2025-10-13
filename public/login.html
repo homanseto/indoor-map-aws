@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login</title>
-    <link rel="stylesheet" href="/stylesheets/style.css" />
+    <link rel="stylesheet" href="/styles/style.css" />
     <style>
       .login-container {
         max-width: 400px;
@@ -53,7 +53,8 @@
   <body>
     <div class="login-container">
       <h2>Login</h2>
-      <form id="loginForm">
+      <form id="loginForm" method="post" autocomplete="off">
+        <input type="hidden" name="_csrf" id="csrfTokenInput" value="" />
         <div class="error" id="errorMsg" style="display: none"></div>
         <label for="userName">Username</label>
         <input
