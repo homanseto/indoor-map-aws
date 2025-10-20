@@ -1,0 +1,224 @@
+import { indoorStyles } from "../utils/indoorStyles.js";
+import { customizeEntityDisplayInfo } from "../utils/informationBox.js";
+
+export class IndoorNetwork {
+  constructor(viewer, networkData) {
+    this.viewer = viewer;
+    this.networkData = networkData;
+    this.style = indoorStyles.indoorNetwork;
+    this.networkVisible = true; // Network visibility state (default: visible)
+    this.toggleButtonEl = null; // Reference to the toggle button element
+  }
+
+  async show() {
+    if (
+      !this.networkData.success ||
+      !this.networkData.result.featureCollection
+    ) {
+      console.error("Invalid network data");
+      return;
+    }
+    this.dataSources = {};
+    const featureCollection = this.networkData.result.featureCollection;
+    if (featureCollection.features.length === 0) {
+      console.warn("No features in network data");
+      return;
+    }
+    const styledFeatures = featureCollection.features.map((feature) => {
+      const restricted = feature.properties.restricted;
+      let style = this.style[restricted];
+      if (!style) {
+        style = this.style["Y"];
+      }
+      feature._indoorStyle = style;
+      return feature;
+    });
+    const dataSource = await Cesium.GeoJsonDataSource.load(
+      {
+        type: "FeatureCollection",
+        features: styledFeatures,
+      },
+      {
+        // Styling will be applied per-entity below
+      }
+    );
+    dataSource.entities.values.forEach((entity, i) => {
+      const style = styledFeatures[i]._indoorStyle;
+      if (style) {
+        entity.polyline.material = style.stroke;
+      }
+    });
+    this.viewer.dataSources.add(dataSource);
+    this.dataSources["Indoor-network"] = dataSource;
+  }
+
+  // Apply Z-value clipping to all building entities (all feature types)
+  applyZClipping(maxZ) {
+    // If network is manually hidden, don't override with Z-clipping
+    if (!this.networkVisible) {
+      return;
+    }
+
+    Object.values(this.dataSources || {}).forEach((ds) => {
+      ds.entities.values.forEach((entity) => {
+        // Try different ways to get positions from Cesium polyline
+        try {
+          let positions = null;
+          if (entity.polyline.positions) {
+            if (typeof entity.polyline.positions.getValue === "function") {
+              positions = entity.polyline.positions.getValue(
+                viewer.clock.currentTime
+              );
+            } else if (Array.isArray(entity.polyline.positions)) {
+              positions = entity.polyline.positions;
+            } else if (entity.polyline.positions._value) {
+              positions = entity.polyline.positions._value;
+            }
+          }
+
+          if (positions && positions.length > 0) {
+            let hasVisiblePoint = false;
+
+            // Check each position in the linestring
+            for (let i = 0; i < positions.length; i++) {
+              try {
+                const cartographic = Cesium.Cartographic.fromCartesian(
+                  positions[i]
+                );
+                const heightInMeters = cartographic.height;
+
+                // If any point is at or below the Z-clipping value, show the linestring
+                if (heightInMeters <= maxZ) {
+                  hasVisiblePoint = true;
+                  break;
+                }
+              } catch (posError) {
+                // If we can't convert this position, assume it's visible
+                hasVisiblePoint = true;
+                break;
+              }
+            }
+            // Show if entityZ is not above maxZ, or if undetermined
+            entity.show = hasVisiblePoint;
+          } else {
+            // Fallback: if we can't get positions, keep it visible
+            entity.show = true;
+          }
+        } catch (error) {
+          console.warn(
+            "Error applying Z-clipping to building network entity:",
+            error
+          );
+          // Fallback: keep it visible if there's an error
+          entity.show = true;
+        }
+      });
+    });
+  }
+
+  // Toggle network visibility
+  toggleNetworkVisibility() {
+    this.networkVisible = !this.networkVisible;
+    this.updateNetworkVisibility();
+    this.updateToggleButton();
+  }
+
+  // Show network
+  showNetwork() {
+    this.networkVisible = true;
+    this.updateNetworkVisibility();
+    this.updateToggleButton();
+  }
+
+  // Hide network
+  hideNetwork() {
+    this.networkVisible = false;
+    this.updateNetworkVisibility();
+    this.updateToggleButton();
+  }
+
+  // Update the actual visibility of network entities
+  updateNetworkVisibility() {
+    Object.values(this.dataSources || {}).forEach((ds) => {
+      ds.entities.values.forEach((entity) => {
+        entity.show = this.networkVisible;
+      });
+    });
+  }
+
+  // Update toggle button appearance
+  updateToggleButton() {
+    if (!this.toggleButtonEl) return;
+
+    if (this.networkVisible) {
+      this.toggleButtonEl.textContent = "Hide Network";
+      this.toggleButtonEl.classList.remove("btn-outline-success");
+      this.toggleButtonEl.classList.add("btn-success");
+    } else {
+      this.toggleButtonEl.textContent = "Show Network";
+      this.toggleButtonEl.classList.remove("btn-success");
+      this.toggleButtonEl.classList.add("btn-outline-success");
+    }
+  }
+
+  // Initialize network toggle button UI (positioned below level selection bar)
+  initNetworkToggle() {
+    // Find the level bar container to position the button below it
+    const levelBarContainer = document.getElementById("levelBarContainer");
+    if (!levelBarContainer) {
+      console.warn(
+        "Level bar container not found, cannot create network toggle"
+      );
+      return;
+    }
+
+    // Create network toggle container
+    let networkToggleContainer = document.getElementById(
+      "networkToggleContainer"
+    );
+    if (!networkToggleContainer) {
+      networkToggleContainer = document.createElement("div");
+      networkToggleContainer.id = "networkToggleContainer";
+      networkToggleContainer.className = "network-toggle-container mt-3 mb-2";
+      networkToggleContainer.style.display = "flex";
+      networkToggleContainer.style.flexDirection = "column";
+      networkToggleContainer.style.alignItems = "center";
+
+      // Insert after the level bar container
+      levelBarContainer.parentNode.insertBefore(
+        networkToggleContainer,
+        levelBarContainer.nextSibling
+      );
+    } else {
+      // Clear existing content
+      networkToggleContainer.innerHTML = "";
+    }
+
+    // Create the toggle button
+    this.toggleButtonEl = document.createElement("button");
+    this.toggleButtonEl.className = "btn btn-success mb-2";
+    this.toggleButtonEl.style.minWidth = "120px";
+    this.toggleButtonEl.addEventListener("click", () => {
+      this.toggleNetworkVisibility();
+    });
+
+    // Add button to container
+    networkToggleContainer.appendChild(this.toggleButtonEl);
+
+    // Initialize button state
+    this.updateToggleButton();
+
+    console.log("✅ Network toggle button initialized");
+  }
+
+  // Clean up network toggle UI
+  destroyNetworkToggle() {
+    const networkToggleContainer = document.getElementById(
+      "networkToggleContainer"
+    );
+    if (networkToggleContainer) {
+      networkToggleContainer.remove();
+    }
+    this.toggleButtonEl = null;
+  }
+}

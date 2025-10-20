@@ -1,18 +1,19 @@
 import { initializeCesiumViewer } from "./cesium-config.js";
 import { BuildingIndoor } from "./modules/building-indoor.js";
+import { IndoorNetwork } from "./modules/indoor-network.js";
 import { ZClippingManager } from "./utils/zClippingManager.js";
 
 // Global variables for demo management
 let viewer;
 let threeDTiles, PNTiles, indoorMTRTiles, indoorNetworkTiles, hikingTiles;
 
-let activeVenues = new Map(); // Map<venueId, VenueIndoor>
 let activeMTRStations = new Map(); // Map<venueId, MTRIndoor>
 let hiddenVenuePolygons = new Set(); // Track hidden venue polygons
 let hiddenMTRPolygons = new Set(); // Track hidden MTR polygons
 
 // Map to manage active buildings (venueId -> BuildingIndoor)
 let activeBuildings = new Map();
+let activeNetworks = new Map();
 
 // Generic handler for selecting any indoor feature (unit, window, opening, amenity, occupant)
 function handleIndoorFeatureClick(selectedEntity) {
@@ -27,7 +28,8 @@ function handleIndoorFeatureClick(selectedEntity) {
       ? selectedEntity.properties.venue_id.getValue()
       : selectedEntity.properties.venue_id;
   }
-  if (!venueId || !activeBuildings.has(venueId)) return;
+  if (!venueId || !activeBuildings.has(venueId) || !activeNetworks.has(venueId))
+    return;
 
   // If already the active building, do nothing
   if (lastActiveVenueId === venueId) return;
@@ -45,6 +47,18 @@ function handleIndoorFeatureClick(selectedEntity) {
   if (typeof buildingIndoor.initLevelBar === "function") {
     buildingIndoor.initLevelBar();
   }
+
+  // Reset network visibility to shown and update toggle button
+  if (activeNetworks.has(venueId)) {
+    const network = activeNetworks.get(venueId);
+    if (typeof network.showNetwork === "function") {
+      network.showNetwork(); // Auto-reset to visible
+    }
+    if (typeof network.initNetworkToggle === "function") {
+      network.initNetworkToggle(); // Reinitialize toggle button
+    }
+  }
+
   lastActiveVenueId = venueId;
 }
 let lastActiveVenueId = null; // Track last active building for level bar reset
@@ -104,6 +118,7 @@ async function initDemo() {
       // Apply Z-clipping to all loaded buildings
       ZClippingManager.applyToAllBuildings(
         activeBuildings,
+        activeNetworks,
         parseFloat(slider.value)
       );
     });
@@ -137,14 +152,26 @@ function setupVenueClickInteraction() {
   handler.setInputAction(async (movement) => {
     try {
       const picked = viewer.scene.pick(movement.position);
+
+      // Clear selections for all buildings when clicking empty space
       if (!Cesium.defined(picked)) {
+        activeBuildings.forEach((building) => {
+          if (typeof building.clearSelection === "function") {
+            building.clearSelection();
+          }
+        });
         return;
       }
+
       const venueId = picked.id.id;
       const properties = picked.id.properties;
-      const featureType = properties.feature_type
-        ? properties.feature_type.getValue(Cesium.JulianDate.now())
-        : undefined;
+      const featureType =
+        properties && properties.feature_type
+          ? properties.feature_type.getValue
+            ? properties.feature_type.getValue(Cesium.JulianDate.now())
+            : properties.feature_type
+          : undefined;
+
       if (!featureType) {
         return;
       }
@@ -167,6 +194,18 @@ function setupVenueClickInteraction() {
           if (typeof buildingIndoor.initLevelBar === "function") {
             buildingIndoor.initLevelBar();
           }
+
+          // Reset network visibility to shown and update toggle button
+          if (activeNetworks.has(venueId)) {
+            const network = activeNetworks.get(venueId);
+            if (typeof network.showNetwork === "function") {
+              network.showNetwork(); // Auto-reset to visible
+            }
+            if (typeof network.initNetworkToggle === "function") {
+              network.initNetworkToggle(); // Reinitialize toggle button
+            }
+          }
+
           lastActiveVenueId = venueId;
           return;
         }
@@ -178,7 +217,7 @@ function setupVenueClickInteraction() {
           }
         }
         try {
-          const response = await fetch(
+          const buildingResponse = await fetch(
             `${API_BASE_URL}/api/smo3dm/building_data?venue_id=${encodeURIComponent(
               venueId
             )}`,
@@ -186,8 +225,35 @@ function setupVenueClickInteraction() {
               credentials: "same-origin",
             }
           );
-          if (response.ok) {
-            const buildingData = await response.json();
+          const networkResponse = await fetch(
+            `${API_BASE_URL}/api/network/network_data?venue_id=${encodeURIComponent(
+              venueId
+            )}`,
+            {
+              credentials: "same-origin",
+            }
+          );
+          if (networkResponse.ok) {
+            const networkData = await networkResponse.json();
+            const indoorNetwork = new IndoorNetwork(viewer, networkData);
+            activeNetworks.set(venueId, indoorNetwork);
+            console.log(networkData);
+            if (typeof indoorNetwork.show === "function") {
+              indoorNetwork.show();
+            }
+            // Initialize network toggle button (positioned below level selection bar)
+            if (typeof indoorNetwork.initNetworkToggle === "function") {
+              indoorNetwork.initNetworkToggle();
+            }
+          } else {
+            console.error(
+              "Failed to fetch network data:",
+              networkResponse.status,
+              networkResponse.statusText
+            );
+          }
+          if (buildingResponse.ok) {
+            const buildingData = await buildingResponse.json();
             // Instantiate BuildingIndoor and add to activeBuildings
             const buildingIndoor = new BuildingIndoor(viewer, buildingData);
             activeBuildings.set(venueId, buildingIndoor);
@@ -206,16 +272,31 @@ function setupVenueClickInteraction() {
           } else {
             console.error(
               "Failed to fetch building data:",
-              response.status,
-              response.statusText
+              buildingResponse.status,
+              buildingResponse.statusText
             );
           }
         } catch (err) {
           console.error("Error fetching building data:", err);
         }
       } else {
-        // For any non-venue feature, update the level bar and context
+        // For any non-venue feature, update the level bar and context, and highlight the feature
         handleIndoorFeatureClick(picked.id);
+
+        // Highlight the selected feature
+        const entityVenueId =
+          picked.id.properties && picked.id.properties.venue_id
+            ? picked.id.properties.venue_id.getValue
+              ? picked.id.properties.venue_id.getValue()
+              : picked.id.properties.venue_id
+            : null;
+
+        if (entityVenueId && activeBuildings.has(entityVenueId)) {
+          const building = activeBuildings.get(entityVenueId);
+          if (typeof building.highlightFeature === "function") {
+            building.highlightFeature(picked.id);
+          }
+        }
       }
     } catch (error) {
       console.log("Error handling click interaction:", error);
@@ -230,23 +311,6 @@ function setupVenueClickInteraction() {
   try {
     // Reminder: API_BASE_URL is set to http://localhost:3001 for debug, "" for Docker/production
     console.log(`API_BASE_URL for backend API calls: '${API_BASE_URL}'`);
-
-    // Test backend/frontend connection
-    try {
-      const testDbResponse = await fetch(`${API_BASE_URL}/api/test/test-db`);
-      if (testDbResponse.ok) {
-        const testDbResult = await testDbResponse.json();
-        console.log("Backend /api/test/test-db result:", testDbResult);
-      } else {
-        console.warn(
-          "/api/test/test-db failed:",
-          testDbResponse.status,
-          testDbResponse.statusText
-        );
-      }
-    } catch (err) {
-      console.error("Error calling /api/test/test-db:", err);
-    }
 
     // Initialize the demo
     await initDemo();

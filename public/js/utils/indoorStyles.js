@@ -233,178 +233,110 @@ export const indoorStyles = {
     fill: new Cesium.Color(0.0, 0.7, 0.0, 0.5), // Darker green, semi-transparent
     outline: false,
   },
-  amenity: {
-    // Restroom amenities with appropriate icons
-    "restroom.female": {
-      image:
-        "https://mapapi.hkmapservice.gov.hk/resources/images/indoor/restroom.female.svg",
-      show: true,
-      pixelOffset: new Cesium.Cartesian2(0, 0),
-      eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
-      alignedAxis: Cesium.Cartesian3.ZERO,
-      width: 30,
-      height: 30,
-      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
-    },
-    "restroom.male": {
-      image:
-        "https://mapapi.hkmapservice.gov.hk/resources/images/indoor/restroom.male.svg",
-      show: true,
-      pixelOffset: new Cesium.Cartesian2(0, 0),
-      eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
-      alignedAxis: Cesium.Cartesian3.ZERO,
-      width: 30,
-      height: 30,
-      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
-    },
-    "restroom.unisex": {
-      image:
-        "https://mapapi.hkmapservice.gov.hk/resources/images/indoor/restroom.unisex.svg",
-      show: true,
-      pixelOffset: new Cesium.Cartesian2(0, 0),
-      eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
-      alignedAxis: Cesium.Cartesian3.ZERO,
-      width: 30,
-      height: 30,
-      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
-    },
-    "restroom.wheelchair": {
-      image:
-        "https://mapapi.hkmapservice.gov.hk/resources/images/indoor/restroom.wheelchair.svg",
-      show: true,
-      pixelOffset: new Cesium.Cartesian2(0, 0),
-      eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
-      alignedAxis: Cesium.Cartesian3.ZERO,
-      width: 30,
-      height: 30,
-      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
-    },
+  amenity: (() => {
+    // Fallback list of known amenity icons (used if auto-detection fails)
+    const knownAmenityTypes = [
+      "elevator",
+      "entry",
+      "escalator",
+      "faregate",
+      "fieldofplay",
+      "information",
+      "mothersroom",
+      "movingwalkway",
+      "parking.ev",
+      "parking.motorcycle",
+      "parking",
+      "platform",
+      "police",
+      "rail.muni",
+      "ramp",
+      "reception.desk",
+      "restroom.female",
+      "restroom.male",
+      "restroom.unisex",
+      "restroom.wheelchair",
+      "security",
+      "stairs",
+      "swimmingpool",
+      "taxi",
+    ];
 
-    // Transportation amenities
-    escalator: {
-      image:
-        "https://mapapi.hkmapservice.gov.hk/resources/images/indoor/escalator.svg",
-      show: true,
-      pixelOffset: new Cesium.Cartesian2(0, 0),
-      eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
-      alignedAxis: Cesium.Cartesian3.ZERO,
-      width: 30,
-      height: 30,
-      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
-    },
-    elevator: {
-      image:
-        "https://mapapi.hkmapservice.gov.hk/resources/images/indoor/elevator.svg",
-      show: true,
-      pixelOffset: new Cesium.Cartesian2(0, 0),
-      eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
-      alignedAxis: Cesium.Cartesian3.ZERO,
-      width: 30,
-      height: 30,
-      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
-    },
-    stairs: {
-      image:
-        "https://mapapi.hkmapservice.gov.hk/resources/images/indoor/stairs.svg",
-      show: true,
-      pixelOffset: new Cesium.Cartesian2(0, 0),
-      eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
-      width: 30,
-      height: 30,
-      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
-    },
-    ramp: {
-      image:
-        "https://mapapi.hkmapservice.gov.hk/resources/images/indoor/ramp.svg",
-      show: true,
-      pixelOffset: new Cesium.Cartesian2(0, 0),
-      eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
-      alignedAxis: Cesium.Cartesian3.ZERO,
-      width: 30,
-      height: 30,
-      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
-    },
+    // Function to auto-detect available amenity icons
+    async function detectAmenityTypes() {
+      try {
+        // Try to fetch the directory listing from the server
+        const response = await fetch("./images/icon/amenity/", {
+          method: "GET",
+        });
 
-    // Service amenities
-    parking: {
-      image:
-        "https://mapapi.hkmapservice.gov.hk/resources/images/indoor/parking.svg",
-      show: true,
-      pixelOffset: new Cesium.Cartesian2(0, 0),
-      eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
-      alignedAxis: Cesium.Cartesian3.ZERO,
-      width: 30,
-      height: 30,
-      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
-    },
-    "parking.motorcycle": {
-      image:
-        "https://mapapi.hkmapservice.gov.hk/resources/images/indoor/parking.motorcycle.svg",
-      show: true,
-      pixelOffset: new Cesium.Cartesian2(0, 0),
-      eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
-      alignedAxis: Cesium.Cartesian3.ZERO,
-      width: 30,
-      height: 30,
-      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
-    },
-    "reception.desk": {
-      image:
-        "https://mapapi.hkmapservice.gov.hk/resources/images/indoor/reception.desk.svg",
-      show: true,
-      pixelOffset: new Cesium.Cartesian2(0, 0),
-      eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
-      alignedAxis: Cesium.Cartesian3.ZERO,
-      width: 30,
-      height: 30,
-      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
-    },
-    security: {
-      image:
-        "https://mapapi.hkmapservice.gov.hk/resources/images/indoor/security.svg",
-      show: true,
-      pixelOffset: new Cesium.Cartesian2(0, 0),
-      eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
-      alignedAxis: Cesium.Cartesian3.ZERO,
-      width: 30,
-      height: 30,
-      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
-    },
+        if (response.ok) {
+          const html = await response.text();
+          // Parse HTML to extract SVG filenames
+          const svgMatches = html.match(/href="([^"]+\.svg)"/g);
+          if (svgMatches) {
+            return svgMatches
+              .map((match) => match.match(/href="([^"]+)\.svg"/)[1])
+              .filter((name) => !name.includes("/")) // Exclude subdirectories
+              .sort();
+          }
+        }
+      } catch (error) {
+        console.warn(
+          "Could not auto-detect amenity icons, using fallback list:",
+          error
+        );
+      }
 
-    // Family amenities
-    mothersroom: {
-      image:
-        "https://mapapi.hkmapservice.gov.hk/resources/images/indoor/mothersroom.svg",
-      show: true,
-      pixelOffset: new Cesium.Cartesian2(0, 0),
-      eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
-      alignedAxis: Cesium.Cartesian3.ZERO,
-      width: 30,
-      height: 30,
-      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
-    },
+      // Return fallback list if auto-detection fails
+      return knownAmenityTypes;
+    }
 
-    // Specialized amenities
-    entry: {
-      show: false,
-      pixelOffset: new Cesium.Cartesian2(0, 0),
-      eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
-      alignedAxis: Cesium.Cartesian3.ZERO,
-      width: 5,
-      height: 5,
-    },
-    fieldofplay: {
-      image:
-        "https://mapapi.hkmapservice.gov.hk/resources/images/indoor/others.png",
-      show: true,
-      pixelOffset: new Cesium.Cartesian2(0, 0),
-      eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
-      alignedAxis: Cesium.Cartesian3.ZERO,
-      width: 5,
-      height: 5,
-      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
-    },
-    unspecified: {
+    // Generate amenity configuration object dynamically
+    const amenityConfig = {};
+
+    // Use known types immediately (synchronous)
+    knownAmenityTypes.forEach((type) => {
+      // Special configurations for certain amenity types
+      if (type === "entry") {
+        amenityConfig[type] = {
+          image: `./images/icon/amenity/${type}.svg`,
+          show: false,
+          pixelOffset: new Cesium.Cartesian2(0, 0),
+          eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
+          alignedAxis: Cesium.Cartesian3.ZERO,
+          width: 5,
+          height: 5,
+        };
+      } else if (type === "fieldofplay") {
+        amenityConfig[type] = {
+          image: `./images/icon/amenity/${type}.svg`,
+          show: true,
+          pixelOffset: new Cesium.Cartesian2(0, 0),
+          eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
+          alignedAxis: Cesium.Cartesian3.ZERO,
+          width: 5,
+          height: 5,
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
+        };
+      } else {
+        // Standard configuration for most amenity types
+        amenityConfig[type] = {
+          image: `./images/icon/amenity/${type}.svg`,
+          show: true,
+          pixelOffset: new Cesium.Cartesian2(0, 0),
+          eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
+          alignedAxis: Cesium.Cartesian3.ZERO,
+          width: 30,
+          height: 30,
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
+        };
+      }
+    });
+
+    // Add legacy configurations that might still use external URLs
+    // (These will be overridden by auto-detected local icons if available)
+    amenityConfig["unspecified"] = {
       image:
         "https://mapapi.hkmapservice.gov.hk/resources/images/indoor/unspecified.png",
       show: true,
@@ -414,12 +346,217 @@ export const indoorStyles = {
       width: 5,
       height: 5,
       distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
+    };
+
+    // Async enhancement: detect and add any new icons
+    detectAmenityTypes().then((detectedTypes) => {
+      detectedTypes.forEach((type) => {
+        if (!amenityConfig[type]) {
+          console.log(`✨ Auto-detected new amenity icon: ${type}`);
+          amenityConfig[type] = {
+            image: `./images/icon/amenity/${type}.svg`,
+            show: true,
+            pixelOffset: new Cesium.Cartesian2(0, 0),
+            eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
+            alignedAxis: Cesium.Cartesian3.ZERO,
+            width: 30,
+            height: 30,
+            distanceDisplayCondition: new Cesium.DistanceDisplayCondition(
+              0,
+              350
+            ),
+          };
+        }
+      });
+    });
+
+    return amenityConfig;
+  })(),
+  occupant: (() => {
+    // Fallback list of known occupant icons (used if auto-detection fails)
+    const knownOccupantTypes = [
+      "atm",
+      "bank",
+      "blooddonationcenter",
+      "busstop",
+      "cinema",
+      "communitycenter",
+      "conveniencestore",
+      "dancestudio",
+      "eventspace",
+      "foodstand",
+      "gourmetmarket",
+      "gym",
+      "library",
+      "performingarts",
+      "publictransport",
+      "restaurant",
+      "seniorcenter",
+      "shopping",
+      "supermarket",
+      "trainstation",
+      "travelagent",
+    ];
+
+    // Function to auto-detect available occupant icons
+    async function detectOccupantTypes() {
+      try {
+        // Try to fetch the directory listing from the server
+        const response = await fetch("./images/icon/occupant/", {
+          method: "GET",
+        });
+
+        if (response.ok) {
+          const html = await response.text();
+          // Parse HTML to extract SVG filenames
+          const svgMatches = html.match(/href="([^"]+\.svg)"/g);
+          if (svgMatches) {
+            return svgMatches
+              .map((match) => match.match(/href="([^"]+)\.svg"/)[1])
+              .filter((name) => !name.includes("/")) // Exclude subdirectories
+              .sort();
+          }
+        }
+      } catch (error) {
+        console.warn(
+          "Could not auto-detect occupant icons, using fallback list:",
+          error
+        );
+      }
+
+      // Return fallback list if auto-detection fails
+      return knownOccupantTypes;
+    }
+
+    // Generate occupant configuration object dynamically
+    const occupantConfig = {};
+
+    // Use known types immediately (synchronous)
+    knownOccupantTypes.forEach((type) => {
+      occupantConfig[type] = {
+        image: `./images/icon/occupant/${type}.svg`,
+        show: true,
+        pixelOffset: new Cesium.Cartesian2(0, 0),
+        eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
+        alignedAxis: Cesium.Cartesian3.ZERO,
+        width: 30,
+        height: 30,
+        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
+      };
+    });
+
+    // Async enhancement: detect and add any new icons
+    detectOccupantTypes().then((detectedTypes) => {
+      detectedTypes.forEach((type) => {
+        if (!occupantConfig[type]) {
+          console.log(`✨ Auto-detected new occupant icon: ${type}`);
+          occupantConfig[type] = {
+            image: `./images/icon/occupant/${type}.svg`,
+            show: true,
+            pixelOffset: new Cesium.Cartesian2(0, 0),
+            eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
+            alignedAxis: Cesium.Cartesian3.ZERO,
+            width: 30,
+            height: 30,
+            distanceDisplayCondition: new Cesium.DistanceDisplayCondition(
+              0,
+              350
+            ),
+          };
+        }
+      });
+    });
+
+    return occupantConfig;
+  })(),
+  indoorNetwork: {
+    Y: {
+      stroke: new Cesium.Color(0.0, 0.0, 1.0, 1.0), // Bright blue, fully opaque
+      strokeWidth: 4, // Makes the stroke thicker (adjust as needed)
+      fill: new Cesium.Color(0.0, 0.0, 0.7, 0.5), // Darker blue, semi-transparent
+      outline: false,
+    },
+    N: {
+      stroke: new Cesium.Color(1.0, 0.0, 0.0, 1.0), // Bright red, fully opaque
+      strokeWidth: 4, // Makes the stroke thicker (adjust as needed)
+      fill: new Cesium.Color(0.7, 0.0, 0.0, 0.5), // Darker red, semi-transparent
+      outline: false,
     },
   },
-  occupant: {
-    font: "Arial",
-    eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
-    fillColor: Cesium.Color.BLACK,
-    outlineColor: Cesium.Color.BLACK,
+  wall: {
+    // Default wall styling with transparency
+    default: {
+      material: new Cesium.ColorMaterialProperty(
+        new Cesium.Color(0.9, 0.9, 0.9, 0.3)
+      ), // Light gray, semi-transparent
+      outline: true,
+      outlineColor: new Cesium.Color(0.6, 0.6, 0.6, 0.8), // Darker gray outline
+      extrudedHeight: 0, // Will be set dynamically
+      height: 0, // Will be set dynamically
+    },
+    // Category-specific wall styles (matching unit categories)
+    restricted: {
+      material: new Cesium.ColorMaterialProperty(
+        new Cesium.Color(0.5, 0.5, 0.5, 0.4)
+      ), // Medium gray
+      outline: true,
+      outlineColor: new Cesium.Color(0.3, 0.3, 0.3, 0.8),
+    },
+    classroom: {
+      material: new Cesium.ColorMaterialProperty(
+        new Cesium.Color(0.98, 0.83, 0.87, 0.25)
+      ), // Light pink tint
+      outline: true,
+      outlineColor: new Cesium.Color(0.8, 0.6, 0.7, 0.8),
+    },
+    restroom: {
+      material: new Cesium.ColorMaterialProperty(
+        new Cesium.Color(0.91, 0.75, 1, 0.35)
+      ), // Light purple tint
+      outline: true,
+      outlineColor: new Cesium.Color(0.7, 0.5, 0.8, 0.8),
+    },
+    elevator: {
+      material: new Cesium.ColorMaterialProperty(
+        new Cesium.Color(0.75, 1, 0.91, 0.3)
+      ), // Light green tint
+      outline: true,
+      outlineColor: new Cesium.Color(0.5, 0.8, 0.7, 0.8),
+    },
+    stairs: {
+      material: new Cesium.ColorMaterialProperty(
+        new Cesium.Color(0.75, 1, 0.91, 0.3)
+      ), // Light green tint
+      outline: true,
+      outlineColor: new Cesium.Color(0.5, 0.8, 0.7, 0.8),
+    },
+    // Add more categories as needed - they'll fall back to default if not specified
+  },
+  // Feature highlighting styles for selection
+  highlight: {
+    // Polygon feature highlighting (units, openings, windows)
+    polygon: {
+      material: new Cesium.ColorMaterialProperty(
+        new Cesium.Color(1.0, 1.0, 0.0, 0.3)
+      ), // Yellow with transparency
+      outline: true,
+      outlineColor: new Cesium.Color(1.0, 1.0, 0.0, 0.8), // Bright yellow outline
+      outlineWidth: 3,
+    },
+    // Point feature highlighting (amenities, occupants) - glow effect
+    point: {
+      // Glow circle behind the icon
+      ellipse: {
+        semiMinorAxis: 20.0,
+        semiMajorAxis: 20.0,
+        material: new Cesium.ColorMaterialProperty(
+          new Cesium.Color(1.0, 1.0, 0.0, 0.4)
+        ), // Yellow glow
+        outline: true,
+        outlineColor: new Cesium.Color(1.0, 1.0, 0.0, 0.8),
+        outlineWidth: 2,
+        height: 0.1, // Slightly above ground to avoid z-fighting
+      },
+    },
   },
 };

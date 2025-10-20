@@ -37,48 +37,77 @@ export class Utils {
       );
       if (matchedAnchor) {
         occ.geometry = matchedAnchor.geometry;
+        occ.properties.nameEn = occ.properties.name.en;
+        occ.properties.nameZh = occ.properties.name.zh
+          ? matchedAnchor.properties.name.zh
+          : "";
+        delete occ.properties.anchor_id;
       }
     });
   }
 
   addVenueIdToAllFeatures(data, venueId) {
-    data.address.forEach((a) => {
-      a.properties.venue_id = venueId;
-    });
-    data.building.forEach((b) => {
-      b.properties.venue_id = venueId;
-    });
-    data.footprint.forEach((f) => {
-      f.properties.venue_id = venueId;
-    });
-    data.level.forEach((l) => {
-      l.properties.venue_id = venueId;
-      l.properties.zValue =
-        l.geometry.type === "Polygon"
-          ? l.geometry.coordinates[0][0][2]
-          : l.geometry.coordinates[0][0][0][2];
-    });
-    data.unit.forEach((u) => {
-      u.properties.venue_id = venueId;
-      u.properties.zValue = u.geometry.coordinates[0][0][2];
-    });
-    data.amenities.forEach((am) => {
-      am.properties.venue_id = venueId;
-      am.properties.zValue = am.geometry.coordinates[2];
-    });
-    data.occupants.forEach((o) => {
-      o.properties.venue_id = venueId;
-      o.properties.zValue = o.geometry.coordinates[2];
-    });
-    data.opening.forEach((o) => {
-      o.properties.venue_id = venueId;
-      o.properties.zValue = o.geometry.coordinates[0][2];
-    });
-    data.window.forEach((w) => {
-      w.properties.venue_id = venueId;
-      w.properties.zValue = w.geometry.coordinates[0][2];
-    });
-    return data;
+    try {
+      data.address.forEach((a) => {
+        a.properties.venue_id = venueId;
+      });
+      data.building.forEach((b) => {
+        b.properties.venue_id = venueId;
+      });
+      data.footprint.forEach((f) => {
+        f.properties.venue_id = venueId;
+      });
+      data.level.forEach((l) => {
+        l.properties.venue_id = venueId;
+        l.properties.zValue =
+          l.geometry.type === "Polygon"
+            ? l.geometry.coordinates[0][0][2]
+            : l.geometry.coordinates[0][0][0][2];
+      });
+      data.unit.forEach((u) => {
+        u.properties.venue_id = venueId;
+        u.properties.zValue = u.geometry.coordinates[0][0][2];
+        u.properties.nameEn =
+          u.properties.name && u.properties.name.en ? u.properties.name.en : "";
+        u.properties.nameZh =
+          u.properties.name && u.properties.name.zh ? u.properties.name.zh : "";
+        delete u.properties.name;
+      });
+      data.amenities.forEach((am) => {
+        am.properties.venue_id = venueId;
+        am.properties.zValue = am.geometry.coordinates[2];
+        am.properties.nameEn = am.properties.name.en;
+        am.properties.nameZh = am.properties.name.zh
+          ? am.properties.name.zh
+          : "";
+        delete am.properties.name;
+      });
+      data.occupants.forEach((o) => {
+        o.properties.venue_id = venueId;
+        o.properties.zValue = o.geometry.coordinates[2];
+      });
+      data.opening.forEach((o) => {
+        o.properties.venue_id = venueId;
+        o.properties.zValue = o.geometry.coordinates[0][2];
+        o.properties.automatic = o.properties.door.automatic
+          ? o.properties.door.automatic
+          : false;
+        o.properties.material = o.properties.door.material
+          ? o.properties.door.material
+          : null;
+        o.properties.doorType = o.properties.door.type
+          ? o.properties.door.type
+          : null;
+        delete o.properties.door;
+      });
+      data.window.forEach((w) => {
+        w.properties.venue_id = venueId;
+        w.properties.zValue = w.geometry.coordinates[0][2];
+      });
+      return data;
+    } catch (err) {
+      console.error("Error in addVenueIdToAllFeatures:", err);
+    }
   }
 
   async upsertVenueAndBuildingDataWithoutTransaction({ venue, buildingData }) {

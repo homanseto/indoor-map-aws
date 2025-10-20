@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 143.67 143.78">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #fff;
+      }
+
+      .cls-2 {
+        fill: #6d6e71;
+        stroke: #6d6e71;
+        stroke-miterlimit: 10;
+        stroke-width: 2px;
+      }
+    </style>
+  </defs>
+  <g id="Layer_1">
+    <rect class="cls-2" x=".97" y="1.02" width="141.73" height="141.73" rx="22.68" ry="22.68"/>
+  </g>
+  <g id="icon">
+    <path class="cls-1" d="M91.46,30.77v24.97h-24.88v25.08h-25.08v25.08h-25.08v11.64h37.03v-25.07h25.15v-24.89h23.82c0-5.96-.01-17.04-.01-17.04v-7.96s19.37.01,24.86.01v-11.83h-35.8Z"/>
+  </g>
+</svg>

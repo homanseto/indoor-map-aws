@@ -43,7 +43,8 @@ services:
       - backend_network
   # postgis-data:
   postgis:
-    image: postgis/postgis:16-master
+    # image: postgis/postgis:16-master
+    image: postgis/postgis:17-3.5
     container_name: postgis
     platform: linux/amd64
     restart: on-failure

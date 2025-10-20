@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 143.75 143.78">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #fff;
+        stroke: #58595b;
+        stroke-miterlimit: 10;
+        stroke-width: 2px;
+      }
+
+      .cls-2 {
+        fill: #6d6e71;
+        stroke-width: 0px;
+      }
+
+      .cls-3 {
+        fill: none;
+        stroke: #fff;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 3px;
+      }
+    </style>
+  </defs>
+  <g id="Layer_1" data-name="Layer 1">
+    <rect class="cls-1" x=".83" y="1.25" width="141.73" height="141.73" rx="22.68" ry="22.68"/>
+  </g>
+  <g id="icon">
+    <g>
+      <rect class="cls-2" x="14.43" y="31.4" width="114.53" height="81.68" rx="10.72" ry="10.72"/>
+      <g>
+        <rect class="cls-3" x="23.4" y="40.61" width="96.6" height="63.25" rx="8.09" ry="8.09"/>
+        <circle class="cls-3" cx="71.7" cy="72.24" r="9.99"/>
+        <path class="cls-3" d="M23.4,54.18h9.77c9.97,0,18.06,8.08,18.06,18.06s-8.08,18.06-18.06,18.06h-9.77"/>
+        <path class="cls-3" d="M120,54.18h-9.77c-9.97,0-18.06,8.08-18.06,18.06s8.08,18.06,18.06,18.06h9.77"/>
+        <line class="cls-3" x1="71.65" y1="40.61" x2="71.65" y2="103.86"/>
+      </g>
+    </g>
+  </g>
+</svg>

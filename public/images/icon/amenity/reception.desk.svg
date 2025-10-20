@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 143.93 143.89">
+  <defs>
+    <style>
+      .cls-1 {
+        stroke: #58595b;
+      }
+
+      .cls-1, .cls-2 {
+        fill: #fff;
+      }
+
+      .cls-1, .cls-2, .cls-3 {
+        stroke-miterlimit: 10;
+      }
+
+      .cls-1, .cls-3 {
+        stroke-width: 2px;
+      }
+
+      .cls-2 {
+        stroke-width: 5px;
+      }
+
+      .cls-2, .cls-3 {
+        stroke: #6d6e71;
+      }
+
+      .cls-3 {
+        fill: #6d6e71;
+      }
+    </style>
+  </defs>
+  <g id="Layer_2" data-name="Layer 2">
+    <rect class="cls-1" x="1.41" y="1.11" width="141.73" height="141.73" rx="22.68" ry="22.68"/>
+  </g>
+  <g id="icon">
+    <g>
+      <circle class="cls-3" cx="95.32" cy="40.72" r="9.32"/>
+      <path class="cls-3" d="M90.56,109.07l-13.28-45.08c-1.34-4.56,1.14-9.53,4.76-9.53h26.55c3.63,0,6.11,4.96,4.76,9.53l-13.28,45.08c-1.72,5.83-7.81,5.83-9.53,0Z"/>
+      <path class="cls-2" d="M20.93,115.24v-36.92c0-5.9,4.78-10.67,10.67-10.67h83.34c5.9,0,10.67,4.78,10.67,10.67v36.92"/>
+      <circle class="cls-3" cx="51.06" cy="40.72" r="9.32"/>
+      <path class="cls-3" d="M46.3,109.07l-13.28-45.08c-1.34-4.56,1.14-9.53,4.76-9.53h26.55c3.63,0,6.11,4.96,4.76,9.53l-13.28,45.08c-1.72,5.83-7.81,5.83-9.53,0Z"/>
+    </g>
+  </g>
+</svg>

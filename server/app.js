@@ -7,8 +7,8 @@ import testRouter from "./routes/testing.js";
 import adminRouter from "./routes/admin.js";
 import loginRouter from "./routes/login.js";
 import smo3dmRouter from "./routes/smo3dm.js";
+import networkRouter from "./routes/network.js";
 import { MongoClient } from "mongodb";
-import { Pool } from "pg";
 import csurf from "csurf";
 
 // Load environment variables from .env in development
@@ -60,6 +60,8 @@ app.use("/api/smo3dm", smo3dmRouter);
 app.use("/api/test", testRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/account", loginRouter);
+app.use("/api/network", networkRouter);
+// app.use("/api/network", requireAuth, networkRouter);
 
 // Middleware to check authentication for protected pages
 function requireAuth(req, res, next) {

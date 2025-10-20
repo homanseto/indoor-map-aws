@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 143.67 143.78">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #fff;
+      }
+
+      .cls-2 {
+        fill: #6d6e71;
+        stroke: #6d6e71;
+        stroke-miterlimit: 10;
+        stroke-width: 2px;
+      }
+    </style>
+  </defs>
+  <g id="Layer_1">
+    <rect class="cls-2" x=".97" y="1.02" width="141.73" height="141.73" rx="22.68" ry="22.68"/>
+  </g>
+  <g id="icon">
+    <g>
+      <g>
+        <g>
+          <rect class="cls-1" x="22.95" y="51.47" width="10.73" height="40.71" rx="5.18" ry="5.18"/>
+          <rect class="cls-1" x="35.55" y="40.99" width="16.25" height="61.67" rx="7.39" ry="7.39"/>
+          <rect class="cls-1" x="16.61" y="65.12" width="4.63" height="13.41"/>
+        </g>
+        <g>
+          <rect class="cls-1" x="109.82" y="51.47" width="10.73" height="40.71" rx="5.18" ry="5.18" transform="translate(230.36 143.64) rotate(180)"/>
+          <rect class="cls-1" x="91.69" y="40.99" width="16.25" height="61.67" rx="7.39" ry="7.39" transform="translate(199.62 143.64) rotate(180)"/>
+          <rect class="cls-1" x="122.25" y="65.12" width="4.63" height="13.41" transform="translate(249.13 143.64) rotate(180)"/>
+        </g>
+      </g>
+      <rect class="cls-1" x="54.09" y="69.26" width="35.31" height="5.12"/>
+    </g>
+  </g>
+</svg>
