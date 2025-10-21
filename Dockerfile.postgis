@@ -1,0 +1,33 @@
+# Custom PostGIS Dockerfile with pre-installed extensions
+FROM postgis/postgis:16-3.5
+
+# Set environment variables
+ENV POSTGRES_DB=indoor_map
+ENV POSTGRES_USER=postgres
+ENV POSTGRES_PASSWORD=password
+
+# Copy custom initialization scripts
+COPY ./postgis-init/*.sql /docker-entrypoint-initdb.d/
+
+# Create a script to ensure extensions are installed
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# Function to install extensions\n\
+install_extensions() {\n\
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL\n\
+        CREATE EXTENSION IF NOT EXISTS postgis;\n\
+        CREATE EXTENSION IF NOT EXISTS postgis_topology;\n\
+        CREATE EXTENSION IF NOT EXISTS postgis_raster;\n\
+        CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;\n\
+        SELECT name, installed_version FROM pg_extension WHERE name LIKE '\''postgis%'\'' OR name = '\''fuzzystrmatch'\'';\n\
+EOSQL\n\
+}\n\
+\n\
+# Install extensions after database is ready\n\
+install_extensions\n' > /usr/local/bin/install-postgis-extensions.sh
+
+# Make the script executable
+RUN chmod +x /usr/local/bin/install-postgis-extensions.sh
+
+# The extensions will be installed via the SQL script in docker-entrypoint-initdb.d

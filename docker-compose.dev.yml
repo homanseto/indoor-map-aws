@@ -2,8 +2,10 @@ version: "3.9"
 
 services:
   web:
-    build: ./
-    image: "indoor_app:latest"
+    build:
+      context: ./
+      dockerfile: Dockerfile.dev
+    image: "indoor_app:dev"
     container_name: web
     ports:
       - "80:3000"
@@ -12,6 +14,12 @@ services:
     environment:
       - MONGO_URL=${MONGO_URL}
       - POSTGIS_URL=${POSTGIS_URL}
+      - NODE_ENV=development
+      - DOCKER_ENV=true
+    volumes:
+      # 🔄 Mount source code for live reload during development
+      - .:/usr/app
+      - /usr/app/node_modules # Protect container's node_modules
     depends_on:
       - mongo
       - postgis
@@ -43,8 +51,11 @@ services:
       - backend_network
   # postgis-data:
   postgis:
-    # image: postgis/postgis:16-master
-    image: postgis/postgis:17-3.5
+    # Option 1: Use official image (current setup with init scripts)
+    image: postgis/postgis:16-3.5
+    # Option 2: Use custom Dockerfile (uncomment next 2 lines and comment image above)
+    # build:
+    #   dockerfile: Dockerfile.postgis
     container_name: postgis
     platform: linux/amd64
     restart: on-failure
@@ -54,6 +65,8 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      # Automatically install PostGIS extensions
+      - POSTGRES_MULTIPLE_EXTENSIONS=postgis,postgis_topology,postgis_raster,fuzzystrmatch
     ports:
       - "5432:5432" # Only accessible from host
     volumes:

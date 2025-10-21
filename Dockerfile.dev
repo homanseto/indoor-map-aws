@@ -1,0 +1,15 @@
+FROM node:20
+
+WORKDIR /usr/app
+
+# Copy package files first for better Docker layer caching
+COPY package*.json ./
+RUN npm install
+
+# In development, source code will be mounted as volume
+# So we don't need to COPY . . here
+
+EXPOSE 3000
+
+# Use nodemon for development with live reload
+CMD ["npm", "run", "dev"]

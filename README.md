@@ -1,10 +1,11 @@
 # Indoor Viewer AWS Docker Setup
 
-This project uses Docker Compose to manage a Node.js backend, MongoDB, and PostGIS for both development and production environments.
+This project uses Docker Compose to manage a Node.js backend, MongoDB, and PostGIS for both development and production environments with support for live code reloading and database persistence.
 
 ## Prerequisites
 
 - Docker and Docker Compose installed
+- Node.js 18+ (for local development without Docker)
 - (Optional) MongoDB Compass, pgAdmin, or other database admin tools for development
 
 ---
@@ -36,47 +37,173 @@ POSTGRES_PASSWORD=postgispassword
 
 ---
 
+## Quick Start
+
+### First Time Setup (ALWAYS Use --build)
+
+1. **Clone and setup environment:**
+
+   ```bash
+   git clone <repository-url>
+   cd indoor-viewer-aws
+   cp .env.example .env  # Edit with your database credentials
+   ```
+
+2. **Build and start all services:**
+
+   ```bash
+   docker-compose -f docker-compose.dev.yml up -d --build
+   ```
+
+3. **Access the application:**
+   - Backend API: [http://localhost](http://localhost)
+   - MongoDB: `localhost:27017` (for MongoDB Compass)
+   - PostGIS: `localhost:5432` (for pgAdmin/other tools)
+
+## When to Use --build Flag
+
+### ✅ ALWAYS Use --build When:
+
+- **First time setup** - Building images for the first time
+- **Dockerfile changes** - Any modifications to Dockerfile
+- **Package.json changes** - New dependencies added/removed
+- **Build context changes** - Files copied during build process
+- **After system cleanup** - If you pruned Docker images
+
+### ❌ DON'T Need --build When:
+
+- Only `.env` file changes
+- Source code changes (development uses volume mounts)
+- Database data changes
+- Just restarting services
+
 ## Development Workflow
 
-1. **Start all services:**
+### Standard Development Commands
 
-   ```sh
-   docker-compose up -d
+1. **Start all services (first time or after changes requiring rebuild):**
+
+   ```bash
+   docker-compose -f docker-compose.dev.yml up -d --build
    ```
 
-   - Uses both `docker-compose.yml` and `docker-compose.override.yml`.
-   - MongoDB is available at `localhost:27017` and PostGIS at `localhost:5432` for admin tools.
+2. **Start services (no build needed):**
 
-2. **Access the app:**
-
-   - Visit [http://localhost](http://localhost) in your browser.
-
-3. **Access databases (optional):**
-
-   - Use MongoDB Compass, pgAdmin, or CLI tools to connect to the databases on your host.
-
-4. **Stop all services:**
-   ```sh
-   docker-compose down
+   ```bash
+   docker-compose -f docker-compose.dev.yml up -d
    ```
+
+3. **Restart specific service:**
+
+   ```bash
+   docker-compose -f docker-compose.dev.yml restart web
+   ```
+
+4. **View logs:**
+
+   ```bash
+   docker-compose -f docker-compose.dev.yml logs -f web
+   docker-compose -f docker-compose.dev.yml logs -f mongo
+   docker-compose -f docker-compose.dev.yml logs -f postgis
+   ```
+
+5. **Stop all services:**
+   ```bash
+   docker-compose -f docker-compose.dev.yml down
+   ```
+
+### Development Features
+
+- **Live Code Reloading**: Source code is mounted as volume - changes reflect immediately
+- **Nodemon Auto-Restart**: Uses `Dockerfile.dev` with nodemon for automatic server restarts
+- **Development Dependencies**: Includes all dev dependencies (not just production)
+- **Database Access**: Both MongoDB (27017) and PostGIS (5432) ports exposed for admin tools
+- **Persistent Data**: Database data survives container restarts via bind mounts
+- **Environment Variables**: Uses `.env` and `.env.local` for configuration
+
+### Dockerfile Usage
+
+| Environment        | Dockerfile Used      | Purpose                                                          |
+| ------------------ | -------------------- | ---------------------------------------------------------------- |
+| **Development**    | `Dockerfile.dev`     | Nodemon, dev dependencies, optimized for development             |
+| **Production**     | `Dockerfile`         | Production build, minimal dependencies, optimized for deployment |
+| **PostGIS Custom** | `Dockerfile.postgis` | Custom PostGIS with pre-installed extensions                     |
+
+### Common Development Scenarios
+
+**Added New npm Package:**
+
+```bash
+# Rebuild required to install new dependencies
+docker-compose -f docker-compose.dev.yml up -d --build
+```
+
+**Changed Dockerfile:**
+
+```bash
+# Force complete rebuild
+docker-compose -f docker-compose.dev.yml build --no-cache
+docker-compose -f docker-compose.dev.yml up -d
+```
+
+**Only Changed Source Code:**
+
+```bash
+# No build needed - volume mounts provide live updates
+# Application will restart automatically (if nodemon is configured)
+# Or manually restart:
+docker-compose -f docker-compose.dev.yml restart web
+```
+
+**Environment Variable Changes:**
+
+```bash
+# No build needed - just restart to load new env vars
+docker-compose -f docker-compose.dev.yml restart web
+```
 
 ---
 
 ## Production Workflow
 
-1. **Start all services (no DB ports exposed):**
+### Production Deployment
 
-   ```sh
-   docker-compose -f docker-compose.yml up -d
+1. **Build and start (production mode):**
+
+   ```bash
+   docker-compose -f docker-compose.yml up -d --build
    ```
 
-   - Only the backend web service is accessible from outside.
-   - Databases are only accessible by the backend container.
+2. **Production-like testing with development setup:**
 
-2. **Stop all services:**
-   ```sh
+   ```bash
+   docker-compose -f docker-compose.dev.yml up -d --build
+   ```
+
+3. **Stop services:**
+   ```bash
    docker-compose -f docker-compose.yml down
+   # OR
+   docker-compose -f docker-compose.dev.yml down
    ```
+
+### Production vs Development Differences
+
+| Feature             | Development                   | Production            |
+| ------------------- | ----------------------------- | --------------------- |
+| **Database Ports**  | Exposed (27017, 5432)         | Not exposed           |
+| **Code Updates**    | Volume mounts (live reload)   | Copied into image     |
+| **Build Frequency** | Only when dependencies change | Every deployment      |
+| **Security**        | Convenience-focused           | Security-focused      |
+| **Database Access** | Direct host access            | Container-only access |
+
+### Production Security Notes
+
+- Database ports are NOT exposed to host
+- Databases only accessible by backend container
+- Use environment-specific `.env` files
+- Never commit credentials to repository
+- Consider using Docker secrets for sensitive data
 
 ---
 
@@ -107,11 +234,94 @@ POSTGRES_PASSWORD=postgispassword
 
 ---
 
-## Useful Commands
+## Docker Build Management
 
-- View logs: `docker-compose logs -f`
-- Rebuild images: `docker-compose build --no-cache`
-- Remove all containers/volumes: `docker system prune -a --volumes`
+### Build Commands Reference
+
+```bash
+# Full build and start (recommended for most cases)
+docker-compose -f docker-compose.dev.yml up -d --build
+
+# Build only (without starting)
+docker-compose -f docker-compose.dev.yml build
+
+# Force rebuild (ignore Docker cache)
+docker-compose -f docker-compose.dev.yml build --no-cache
+
+# Build specific service
+docker-compose -f docker-compose.dev.yml build web
+
+# Start without building (if images exist)
+docker-compose -f docker-compose.dev.yml up -d
+```
+
+### Troubleshooting Builds
+
+**Build failing due to cache issues:**
+
+```bash
+docker-compose -f docker-compose.dev.yml build --no-cache
+```
+
+**Out of disk space:**
+
+```bash
+# Remove unused containers, networks, images
+docker system prune -f
+
+# Remove unused volumes (⚠️  DATA LOSS)
+docker system prune -a --volumes
+```
+
+**Check what's using space:**
+
+```bash
+docker system df
+docker images ls
+docker ps -a
+```
+
+### Useful Development Commands
+
+```bash
+# View real-time logs
+docker-compose -f docker-compose.dev.yml logs -f
+docker-compose -f docker-compose.dev.yml logs -f web
+
+# Execute commands in running containers
+docker exec -it web bash
+docker exec -it mongodb mongosh
+docker exec -it postgis psql -U postgis -d indoor_app
+
+# Check container status
+docker-compose -f docker-compose.dev.yml ps
+
+# Restart specific services
+docker-compose -f docker-compose.dev.yml restart web
+docker-compose -f docker-compose.dev.yml restart mongo
+
+# Pull latest base images
+docker-compose -f docker-compose.dev.yml pull
+```
+
+### Database Management
+
+```bash
+# Access MongoDB
+docker exec -it mongodb mongosh admin -u admin -p adminpassword
+
+# Access PostGIS
+docker exec -it postgis psql -U postgis -d indoor_app
+
+# Backup databases
+docker exec mongodb mongodump --out /data/backup
+docker exec postgis pg_dump -U postgis indoor_app > backup.sql
+
+# Reset database (⚠️ DATA LOSS)
+docker-compose -f docker-compose.dev.yml down
+rm -rf ./mongodb-data ./postgis-data
+docker-compose -f docker-compose.dev.yml up -d --build
+```
 
 ---
 
