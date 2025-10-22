@@ -5,10 +5,10 @@ services:
     build:
       context: ./
       dockerfile: Dockerfile.dev
-    image: "indoor_app:dev"
+    image: "indoor_map:dev"
     container_name: web
     ports:
-      - "80:3000"
+      - "8080:3000"
     env_file:
       - .env
     environment:
@@ -30,15 +30,14 @@ services:
     image: mongo:noble
     container_name: mongodb
     restart: on-failure
-    # need to generate keyfile and mount it for replica set authentication
-    #(openssl rand -base64 756 > mongo-keyfile
-    # chmod 400 mongo-keyfile)
-    command: ["mongod", "--replSet", "rs0", "--keyFile", "/data/keyfile"]
+    # Temporary: Running without replica set and keyfile for initial testing
+    # Will add replica set support later using Option A (custom Dockerfile)
+    command: ["mongod"]
 
     volumes:
-      - ./mongodb-data:/data/db # Bind the volume to a folder in your project
+      - mongodb_data:/data/db # Docker named volume for data persistence
       - ./mongo-init:/docker-entrypoint-initdb.d # Mount init scripts
-      - ./mongo-keyfile:/data/keyfile:ro
+      # Removed keyfile mount temporarily
     env_file:
       - .env
     environment:
@@ -57,7 +56,6 @@ services:
     # build:
     #   dockerfile: Dockerfile.postgis
     container_name: postgis
-    platform: linux/amd64
     restart: on-failure
     env_file:
       - .env
@@ -70,10 +68,16 @@ services:
     ports:
       - "5432:5432" # Only accessible from host
     volumes:
-      - ./postgis-data:/var/lib/postgresql/data
+      - postgis_data:/var/lib/postgresql/data # Docker named volume for data persistence
       - ./postgis-init:/docker-entrypoint-initdb.d # Mount init scripts
     networks:
       - backend_network
+
+volumes:
+  mongodb_data:
+    driver: local
+  postgis_data:
+    driver: local
 
 networks:
   backend_network:

@@ -54,7 +54,8 @@ export class BuildingIndoor {
       if (
         styleKey === "unit" ||
         styleKey === "amenity" ||
-        styleKey === "occupant"
+        styleKey === "occupant" ||
+        styleKey === "wall"
       ) {
         const styledFeatures = featureCollection.features.map((feature) => {
           const category = feature.properties && feature.properties.category;
@@ -468,10 +469,20 @@ export class BuildingIndoor {
 
     // Create level height mapping
     const levelMap = new Map();
+    const newLevelMap = new Map();
     this.buildingData.levels.features.forEach((level) => {
       levelMap.set(level.id, level.properties.zValue);
     });
-
+    this.buildingData.levels.features.forEach((level) => {
+      newLevelMap.set(level.id, {
+        zValue: level.properties.zValue,
+        ordinal: level.properties.ordinal,
+      });
+    });
+    const sorted = [...newLevelMap.values()].sort(
+      (a, b) => a.zValue - b.zValue
+    );
+    console.log(sorted);
     // Get sorted levels for height calculations
     const sortedLevels = [...levelMap.values()].sort((a, b) => a - b);
 
@@ -500,6 +511,8 @@ export class BuildingIndoor {
           wallHeight = sortedLevels[currentIndex + 1] - currentZ;
         }
 
+        ///default 2.5m
+        wallHeight = 2.8;
         // Create wall entity from unit polygon
         const wallEntity = this.createWallFromPolygon(
           unit.geometry.coordinates[0],
@@ -578,6 +591,7 @@ export class BuildingIndoor {
           closeBottom: true,
         },
         // Make wall completely unpickable
+        feature_type: "wall",
         allowPicking: false,
         properties: {
           feature_type: "wall",
