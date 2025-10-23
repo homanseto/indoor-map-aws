@@ -28,6 +28,7 @@ export class BuildingIndoor {
       { dataKey: "occupants", styleKey: "occupant" },
     ];
 
+    console.log(featureTypes);
     // Generate and add 3D walls for units
     console.log("Generating 3D walls for building units...");
     const wallEntities = this.generateUnitWalls();
@@ -39,6 +40,31 @@ export class BuildingIndoor {
       this.viewer.dataSources.add(wallDataSource);
       this.dataSources["walls"] = wallDataSource;
       console.log(`Added ${wallEntities.length} wall entities to viewer`);
+    }
+
+    // Generate and add 3D doors for openings
+    console.log("Generating 3D doors for building openings...");
+    const doorEntities = this.generateOpeningDoors();
+    if (doorEntities.length > 0) {
+      const doorDataSource = new Cesium.CustomDataSource("opening_doors");
+      // Get the original opening features for customization
+      const openingFeatures = this.buildingData.openings.features;
+
+      doorEntities.forEach((doorEntity, i) => {
+        doorDataSource.entities.add(doorEntity);
+
+        // Find the corresponding opening feature for this door
+        const originalOpening = openingFeatures.find(
+          (opening) => doorEntity.id === `door_${opening.id}`
+        );
+
+        if (originalOpening) {
+          customizeEntityDisplayInfo(doorEntity, originalOpening);
+        }
+      });
+      this.viewer.dataSources.add(doorDataSource);
+      this.dataSources["doors"] = doorDataSource;
+      console.log(`Added ${doorEntities.length} door entities to viewer`);
     }
 
     for (const { dataKey, styleKey } of featureTypes) {
@@ -54,8 +80,7 @@ export class BuildingIndoor {
       if (
         styleKey === "unit" ||
         styleKey === "amenity" ||
-        styleKey === "occupant" ||
-        styleKey === "wall"
+        styleKey === "occupant"
       ) {
         const styledFeatures = featureCollection.features.map((feature) => {
           const category = feature.properties && feature.properties.category;
@@ -298,35 +323,60 @@ export class BuildingIndoor {
       this.viewer.entities.remove(this.highlightEntity);
     }
 
-    // Restore original appearance for previously selected polygon
-    if (this.selectedEntity && this.selectedEntity.polygon) {
-      // Reset to original material - need to get original style
-      const featureType =
-        this.selectedEntity.properties &&
-        this.selectedEntity.properties.feature_type
-          ? this.selectedEntity.properties.feature_type.getValue
-            ? this.selectedEntity.properties.feature_type.getValue()
-            : this.selectedEntity.properties.feature_type
-          : null;
-
-      if (featureType === "unit") {
-        const category =
+    // Restore original appearance for previously selected features
+    if (this.selectedEntity) {
+      if (this.selectedEntity.polygon) {
+        // Reset polygon material to original style
+        const featureType =
           this.selectedEntity.properties &&
-          this.selectedEntity.properties.category
-            ? this.selectedEntity.properties.category.getValue
-              ? this.selectedEntity.properties.category.getValue()
-              : this.selectedEntity.properties.category
-            : "default";
+          this.selectedEntity.properties.feature_type
+            ? this.selectedEntity.properties.feature_type.getValue
+              ? this.selectedEntity.properties.feature_type.getValue()
+              : this.selectedEntity.properties.feature_type
+            : null;
 
-        const originalStyle =
-          this.styles.unit[category] || this.styles.unit.default;
-        if (originalStyle && originalStyle.fill) {
-          this.selectedEntity.polygon.material = originalStyle.fill;
+        if (featureType === "unit") {
+          const category =
+            this.selectedEntity.properties &&
+            this.selectedEntity.properties.category
+              ? this.selectedEntity.properties.category.getValue
+                ? this.selectedEntity.properties.category.getValue()
+                : this.selectedEntity.properties.category
+              : "default";
+
+          const originalStyle =
+            this.styles.unit[category] || this.styles.unit.default;
+          if (originalStyle && originalStyle.fill) {
+            this.selectedEntity.polygon.material = originalStyle.fill;
+          }
+        } else if (featureType === "opening") {
+          this.selectedEntity.polygon.material = this.styles.opening.fill;
+        } else if (featureType === "window") {
+          this.selectedEntity.polygon.material = this.styles.window.fill;
+        } else if (featureType === "door") {
+          // Restore original door material
+          const category =
+            this.selectedEntity.properties &&
+            this.selectedEntity.properties.category
+              ? this.selectedEntity.properties.category.getValue
+                ? this.selectedEntity.properties.category.getValue()
+                : this.selectedEntity.properties.category
+              : "default";
+
+          const originalStyle =
+            this.styles.door[category] || this.styles.door.default;
+          if (originalStyle && originalStyle.material) {
+            this.selectedEntity.polygon.material = originalStyle.material;
+          }
         }
-      } else if (featureType === "opening") {
-        this.selectedEntity.polygon.material = this.styles.opening.fill;
-      } else if (featureType === "window") {
-        this.selectedEntity.polygon.material = this.styles.window.fill;
+      } else if (
+        this.selectedEntity.billboard &&
+        this.selectedEntity._originalScale !== undefined
+      ) {
+        // Restore original icon scale
+        this.selectedEntity.billboard.scale =
+          this.selectedEntity._originalScale;
+        delete this.selectedEntity._originalScale;
       }
     }
 
@@ -351,21 +401,21 @@ export class BuildingIndoor {
     this.selectedEntity = entity;
 
     if (entity.polygon) {
-      // Polygon feature highlighting (units, openings, windows)
+      // Polygon feature highlighting (units)
       entity.polygon.material = this.styles.highlight.polygon.material;
     } else if (entity.billboard) {
-      // Point feature highlighting (amenities, occupants) - add glow
-      const position = entity.position.getValue(Cesium.JulianDate.now());
+      // Point feature highlighting (amenities, occupants) - scale icon only
+      // Store original scale for restoration
+      entity._originalScale = entity.billboard.scale
+        ? entity.billboard.scale.getValue()
+        : 1.0;
 
-      this.highlightEntity = this.viewer.entities.add({
-        id: `highlight_${entity.id}`,
-        position: position,
-        ellipse: this.styles.highlight.point.ellipse,
-        properties: {
-          feature_type: "highlight",
-          parent_entity: entity.id,
-        },
-      });
+      // Scale up the icon
+      entity.billboard.scale = entity._originalScale * 1.4;
+    } else if (entity.polyline) {
+      ///, openings, windows
+      entity.polyline.material = this.styles.highlight.linestring.material;
+      entity.polyline.width = this.styles.highlight.linestring.width;
     }
   }
 
@@ -419,6 +469,10 @@ export class BuildingIndoor {
         if (featureType === "wall") {
           // For walls, check if the base of the wall is below the clipping plane
           // This ensures walls are visible when their level is visible
+          entity.show =
+            entityZ === null || isNaN(entityZ) ? true : entityZ <= maxZ;
+        } else if (featureType === "door") {
+          // For doors, apply same logic as walls - they should be visible when their level is visible
           entity.show =
             entityZ === null || isNaN(entityZ) ? true : entityZ <= maxZ;
         } else {
@@ -607,6 +661,171 @@ export class BuildingIndoor {
       return wallEntity;
     } catch (error) {
       console.error(`Error creating wall entity for unit ${unitId}:`, error);
+      return null;
+    }
+  }
+
+  // Generate 3D doors for all openings in the building
+  generateOpeningDoors() {
+    if (!this.buildingData.levels || !this.buildingData.openings) {
+      console.warn("Cannot generate doors: missing levels or openings data");
+      return [];
+    }
+
+    // Create level height mapping
+    const levelMap = new Map();
+    this.buildingData.levels.features.forEach((level) => {
+      levelMap.set(level.id, level.properties.zValue);
+    });
+
+    console.log(
+      `Generating doors for ${this.buildingData.openings.features.length} openings across ${this.buildingData.levels.features.length} levels`
+    );
+
+    const doorEntities = [];
+
+    this.buildingData.openings.features.forEach((opening, index) => {
+      try {
+        const currentZ = levelMap.get(opening.properties.level_id);
+        if (currentZ === undefined) {
+          console.warn(
+            `Opening ${opening.id} has invalid level_id: ${opening.properties.level_id}`
+          );
+          return;
+        }
+
+        // Fixed door height of 2 meters as requested
+        const doorHeight = 2.0;
+
+        // Create door entity from opening polyline
+        const doorEntity = this.createDoorFromPolyline(
+          opening.geometry.coordinates,
+          currentZ,
+          doorHeight,
+          opening.id,
+          opening.properties.category || "default",
+          opening.properties
+        );
+
+        if (doorEntity) {
+          doorEntities.push(doorEntity);
+        }
+      } catch (error) {
+        console.error(
+          `Error generating door for opening ${opening.id}:`,
+          error
+        );
+      }
+    });
+
+    console.log(`Successfully generated ${doorEntities.length} door entities`);
+    return doorEntities;
+  }
+
+  // Create a 3D door entity from a polyline's coordinates
+  createDoorFromPolyline(
+    coordinates,
+    baseHeight,
+    doorHeight,
+    openingId,
+    category = "default",
+    properties = {}
+  ) {
+    if (!coordinates || coordinates.length < 2) {
+      console.warn(`Invalid coordinates for opening ${openingId}`);
+      return null;
+    }
+
+    try {
+      // Convert polyline coordinates to Cesium format
+      const positions = [];
+      coordinates.forEach((coord) => {
+        if (coord.length >= 2) {
+          positions.push(coord[0], coord[1]); // lon, lat
+        }
+      });
+
+      if (positions.length < 4) {
+        // Need at least 2 points (4 values)
+        console.warn(`Insufficient coordinates for door ${openingId}`);
+        return null;
+      }
+
+      // Create door as a thin rectangular polygon from the polyline
+      // Use the polyline to create a thin rectangle representing the door
+      const doorWidth = 0.1; // 10cm thick door
+      const startPoint = [positions[0], positions[1]];
+      const endPoint = [
+        positions[positions.length - 2],
+        positions[positions.length - 1],
+      ];
+
+      // Calculate perpendicular direction for door thickness
+      const dx = endPoint[0] - startPoint[0];
+      const dy = endPoint[1] - startPoint[1];
+      const length = Math.sqrt(dx * dx + dy * dy);
+      /// approximate both latitude and longitude degrees as 111000 meters per degree.
+      const perpX = ((-dy / length) * doorWidth) / 111000; // Approximate degrees conversion
+      const perpY = ((dx / length) * doorWidth) / 111000;
+
+      // Create door rectangle coordinates
+      const doorCoords = [
+        [startPoint[0] + perpX, startPoint[1] + perpY],
+        [endPoint[0] + perpX, endPoint[1] + perpY],
+        [endPoint[0] - perpX, endPoint[1] - perpY],
+        [startPoint[0] - perpX, startPoint[1] - perpY],
+        [startPoint[0] + perpX, startPoint[1] + perpY], // Close the polygon
+      ];
+
+      // Convert to flat array for Cesium
+      const doorPositions = [];
+      doorCoords.forEach((coord) => {
+        doorPositions.push(coord[0], coord[1]);
+      });
+
+      // Create Cesium positions from coordinates
+      const cesiumPositions = Cesium.Cartesian3.fromDegreesArray(doorPositions);
+
+      // Get door style based on category
+      const doorStyle = this.styles.door[category] || this.styles.door.default;
+
+      const newProperties = properties;
+      delete newProperties.feature_type;
+      // Create door entity
+      const doorEntity = new Cesium.Entity({
+        id: `door_${openingId}`,
+        name: `Door for ${properties.nameEn || openingId}`,
+        polygon: {
+          hierarchy: cesiumPositions,
+          material: doorStyle.material,
+          outline: doorStyle.outline,
+          outlineColor: doorStyle.outlineColor,
+          height: baseHeight,
+          extrudedHeight: baseHeight + doorHeight,
+          closeTop: false,
+          closeBottom: true,
+        },
+
+        // Make door clickable (unlike walls)
+        properties: {
+          feature_type: "door",
+          opening_id: openingId,
+          level_id: properties.level_id,
+          zValue: baseHeight,
+          doorHeight: doorHeight,
+          category: category,
+          venue_id: properties.venue_id,
+          // Inherit all original opening properties
+          ...newProperties,
+        },
+      });
+
+      return doorEntity;
+    } catch (error) {
+      console.error(
+        `Error creating door entity for opening ${openingId}:`,
+        error
+      );
       return null;
     }
   }

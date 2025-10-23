@@ -224,6 +224,7 @@ export const indoorStyles = {
   },
   window: {
     stroke: new Cesium.Color(0.77, 0.86, 0.93, 0.5),
+    strokeWidth: 4,
     fill: new Cesium.Color(0.77, 0.86, 0.93, 0.5),
     outline: false,
   },
@@ -470,13 +471,13 @@ export const indoorStyles = {
     return occupantConfig;
   })(),
   indoorNetwork: {
-    Y: {
+    N: {
       stroke: new Cesium.Color(0.0, 0.0, 1.0, 1.0), // Bright blue, fully opaque
       strokeWidth: 4, // Makes the stroke thicker (adjust as needed)
       fill: new Cesium.Color(0.0, 0.0, 0.7, 0.5), // Darker blue, semi-transparent
       outline: false,
     },
-    N: {
+    Y: {
       stroke: new Cesium.Color(1.0, 0.0, 0.0, 1.0), // Bright red, fully opaque
       strokeWidth: 4, // Makes the stroke thicker (adjust as needed)
       fill: new Cesium.Color(0.7, 0.0, 0.0, 0.5), // Darker red, semi-transparent
@@ -532,6 +533,40 @@ export const indoorStyles = {
     },
     // Add more categories as needed - they'll fall back to default if not specified
   },
+  door: {
+    // Default door styling with transparency - similar to walls but more transparent
+    pedestrian: {
+      material: new Cesium.ColorMaterialProperty(
+        new Cesium.Color(0.6, 0.4, 0.2, 0.4)
+      ), // Brown wood-like color, semi-transparent
+      outline: true,
+      outlineColor: new Cesium.Color(0.4, 0.2, 0.1, 0.8), // Darker brown outline
+      extrudedHeight: 0, // Will be set dynamically
+      height: 0, // Will be set dynamically
+    },
+    // Category-specific door styles
+    emergencyexit: {
+      material: new Cesium.ColorMaterialProperty(
+        new Cesium.Color(0.0, 0.5, 0.8, 0.5)
+      ), // Blue for main entrances
+      outline: true,
+      outlineColor: new Cesium.Color(0.0, 0.3, 0.6, 0.8),
+    },
+    "pedestrian.principal": {
+      material: new Cesium.ColorMaterialProperty(
+        new Cesium.Color(0.8, 0.2, 0.2, 0.6)
+      ), // Red for emergency exits
+      outline: true,
+      outlineColor: new Cesium.Color(0.6, 0.1, 0.1, 0.8),
+    },
+    service: {
+      material: new Cesium.ColorMaterialProperty(
+        new Cesium.Color(0.7, 0.6, 0.4, 0.3)
+      ), // Light brown for internal doors
+      outline: true,
+      outlineColor: new Cesium.Color(0.5, 0.4, 0.2, 0.8),
+    },
+  },
   // Feature highlighting styles for selection
   highlight: {
     // Polygon feature highlighting (units, openings, windows)
@@ -557,6 +592,16 @@ export const indoorStyles = {
         outlineWidth: 2,
         height: 0.1, // Slightly above ground to avoid z-fighting
       },
+    },
+    // Linestring feature highlighting (openings, windows, walls)
+    linestring: {
+      material: new Cesium.ColorMaterialProperty(
+        new Cesium.Color(1.0, 1.0, 0.0, 0.8)
+      ), // Bright yellow for visibility
+      width: 5, // Thicker line for highlighting
+      clampToGround: true, // Ensure line stays on ground
+      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 1000),
+      strokeWidth: 6,
     },
   },
 };

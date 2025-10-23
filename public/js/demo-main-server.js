@@ -15,6 +15,9 @@ let hiddenMTRPolygons = new Set(); // Track hidden MTR polygons
 let activeBuildings = new Map();
 let activeNetworks = new Map();
 
+// Coordination flag to prevent timing conflicts between event handlers
+let isProcessingClick = false;
+
 // Generic handler for selecting any indoor feature (unit, window, opening, amenity, occupant)
 function handleIndoorFeatureClick(selectedEntity) {
   // Try to get venue_id from entity properties
@@ -112,6 +115,9 @@ async function initDemo() {
     zClippingBarContainer.innerHTML = html;
   }
 
+  // Setup wall selection override to prevent wall info boxes
+  setupWallSelectionOverride();
+
   setupVenueClickInteraction();
   // Wire up Z-clipping slider
   const slider = document.getElementById("z-clipping-slider");
@@ -151,10 +157,58 @@ async function setupVenueDataSources(venueGeoJson) {
   }
 }
 
+function setupWallSelectionOverride() {
+  // Override Cesium's default selection behavior to show info for underlying features when clicking walls
+  viewer.cesiumWidget.screenSpaceEventHandler.setInputAction(function (event) {
+    // Prevent processing if already being handled
+    if (isProcessingClick) return;
+
+    const pickedFeatures = viewer.scene.drillPick(event.position);
+
+    if (pickedFeatures.length === 0) {
+      viewer.selectedEntity = undefined;
+      return;
+    }
+
+    // Find the first non-wall feature to display its information
+    for (let pickedFeature of pickedFeatures) {
+      if (pickedFeature && pickedFeature.id && pickedFeature.id.properties) {
+        const featureType =
+          pickedFeature.id.properties.feature_type?.getValue?.() ||
+          pickedFeature.id.properties.feature_type;
+
+        if (!featureType || featureType === "wall") {
+          continue; // Skip walls and undefined features
+        }
+
+        // Found a valid non-wall feature - set it as selected to show its info box
+        viewer.selectedEntity = pickedFeature.id;
+        console.log(
+          `[setupWallSelectionOverride] Selected underlying feature: ${featureType} (${pickedFeature.id.id})`
+        );
+
+        // Set flag to let custom handler know selection is already handled
+        window.lastSelectedByOverride = pickedFeature.id;
+        return;
+      }
+    }
+
+    // If only walls or invalid features found, clear selection
+    viewer.selectedEntity = undefined;
+  }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+  console.log(
+    "[setupWallSelectionOverride] Wall click-through selection installed - underlying features will show info boxes"
+  );
+}
+
 function setupVenueClickInteraction() {
   const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
   handler.setInputAction(async (movement) => {
     try {
+      // Set processing flag to coordinate with override handler
+      isProcessingClick = true;
+
       const picked = viewer.scene.pick(movement.position);
       const pickedFeatures = viewer.scene.drillPick(movement.position);
       if (pickedFeatures.length === 0) {
@@ -325,145 +379,11 @@ function setupVenueClickInteraction() {
           }
         }
       }
-
-      // const venueId = picked.id.id;
-      // const properties = picked.id.properties;
-      // const featureType =
-      //   properties && properties.feature_type
-      //     ? properties.feature_type.getValue
-      //       ? properties.feature_type.getValue(Cesium.JulianDate.now())
-      //       : properties.feature_type
-      //     : undefined;
-
-      // if (!featureType) {
-      //   return;
-      // }
-
-      // if (featureType === "venue") {
-      //   // Get venue_id from properties
-      //   if (!venueId) return;
-      //   if (activeBuildings.has(venueId)) {
-      //     // If already loaded, update the level bar and filtering to this building
-      //     if (
-      //       lastActiveVenueId &&
-      //       activeBuildings.has(lastActiveVenueId) &&
-      //       lastActiveVenueId !== venueId
-      //     ) {
-      //       const prevBuilding = activeBuildings.get(lastActiveVenueId);
-      //       if (typeof prevBuilding.resetLevelBarAndShowAll === "function") {
-      //         prevBuilding.resetLevelBarAndShowAll();
-      //       }
-      //     }
-      //     const buildingIndoor = activeBuildings.get(venueId);
-      //     if (typeof buildingIndoor.initLevelBar === "function") {
-      //       buildingIndoor.initLevelBar();
-      //     }
-
-      //     // Reset network visibility to shown and update toggle button
-      //     if (activeNetworks.has(venueId)) {
-      //       const network = activeNetworks.get(venueId);
-      //       if (typeof network.showNetwork === "function") {
-      //         network.showNetwork(); // Auto-reset to visible
-      //       }
-      //       if (typeof network.initNetworkToggle === "function") {
-      //         network.initNetworkToggle(); // Reinitialize toggle button
-      //       }
-      //     }
-
-      //     lastActiveVenueId = venueId;
-      //     return;
-      //   }
-      //   // Reset previous building's level bar and filtering to ALL
-      //   if (lastActiveVenueId && activeBuildings.has(lastActiveVenueId)) {
-      //     const prevBuilding = activeBuildings.get(lastActiveVenueId);
-      //     if (typeof prevBuilding.resetLevelBarAndShowAll === "function") {
-      //       prevBuilding.resetLevelBarAndShowAll();
-      //     }
-      //   }
-      //   try {
-      //     const buildingResponse = await fetch(
-      //       `${API_BASE_URL}/api/smo3dm/building_data?venue_id=${encodeURIComponent(
-      //         venueId
-      //       )}`,
-      //       {
-      //         credentials: "same-origin",
-      //       }
-      //     );
-      //     const networkResponse = await fetch(
-      //       `${API_BASE_URL}/api/network/network_data?venue_id=${encodeURIComponent(
-      //         venueId
-      //       )}`,
-      //       {
-      //         credentials: "same-origin",
-      //       }
-      //     );
-      //     if (networkResponse.ok) {
-      //       const networkData = await networkResponse.json();
-      //       const indoorNetwork = new IndoorNetwork(viewer, networkData);
-      //       activeNetworks.set(venueId, indoorNetwork);
-      //       console.log(networkData);
-      //       if (typeof indoorNetwork.show === "function") {
-      //         indoorNetwork.show();
-      //       }
-      //       // Initialize network toggle button (positioned below level selection bar)
-      //       if (typeof indoorNetwork.initNetworkToggle === "function") {
-      //         indoorNetwork.initNetworkToggle();
-      //       }
-      //     } else {
-      //       console.error(
-      //         "Failed to fetch network data:",
-      //         networkResponse.status,
-      //         networkResponse.statusText
-      //       );
-      //     }
-      //     if (buildingResponse.ok) {
-      //       const buildingData = await buildingResponse.json();
-      //       // Instantiate BuildingIndoor and add to activeBuildings
-      //       const buildingIndoor = new BuildingIndoor(viewer, buildingData);
-      //       activeBuildings.set(venueId, buildingIndoor);
-      //       // Hide the venue entity
-      //       picked.id.show = false;
-      //       // Show the building and initialize the level bar
-      //       if (typeof buildingIndoor.show === "function") {
-      //         buildingIndoor.show();
-      //       }
-      //       if (typeof buildingIndoor.initLevelBar === "function") {
-      //         buildingIndoor.initLevelBar();
-      //       }
-      //       // Set this as the last active building
-      //       lastActiveVenueId = venueId;
-      //       console.log("Building data for venue", venueId, buildingData);
-      //     } else {
-      //       console.error(
-      //         "Failed to fetch building data:",
-      //         buildingResponse.status,
-      //         buildingResponse.statusText
-      //       );
-      //     }
-      //   } catch (err) {
-      //     console.error("Error fetching building data:", err);
-      //   }
-      // } else {
-      //   // For any non-venue feature, update the level bar and context, and highlight the feature
-      //   handleIndoorFeatureClick(picked.id);
-
-      //   // Highlight the selected feature
-      //   const entityVenueId =
-      //     picked.id.properties && picked.id.properties.venue_id
-      //       ? picked.id.properties.venue_id.getValue
-      //         ? picked.id.properties.venue_id.getValue()
-      //         : picked.id.properties.venue_id
-      //       : null;
-
-      //   if (entityVenueId && activeBuildings.has(entityVenueId)) {
-      //     const building = activeBuildings.get(entityVenueId);
-      //     if (typeof building.highlightFeature === "function") {
-      //       building.highlightFeature(picked.id);
-      //     }
-      //   }
-      // }
     } catch (error) {
       console.log("Error handling click interaction:", error);
+    } finally {
+      // Always reset processing flag
+      isProcessingClick = false;
     }
   }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 }
@@ -482,14 +402,6 @@ function setupVenueClickInteraction() {
     // Set up global references
     window.viewer = viewer;
     viewer.scene.debugShowFramesPerSecond = true;
-
-    // Export classes globally for debugging/console access
-
-    // Export venue management functions
-    // window.clearAllVenues = clearAllVenues;
-    // window.getVenueStatus = getVenueStatus;
-    // window.activeVenues = activeVenues;
-    // window.activeMTRStations = activeMTRStations;
 
     // Export Z-clipping manager
     window.ZClippingManager = ZClippingManager;
