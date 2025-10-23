@@ -18,6 +18,9 @@ let activeNetworks = new Map();
 // Coordination flag to prevent timing conflicts between event handlers
 let isProcessingClick = false;
 
+// Global variable to store venue data for search functionality
+let globalVenueGeoJson = null;
+
 // Generic handler for selecting any indoor feature (unit, window, opening, amenity, occupant)
 function handleIndoorFeatureClick(selectedEntity) {
   // Try to get venue_id from entity properties
@@ -103,7 +106,14 @@ async function initDemo() {
   );
   const venueGeoJson = await venueResponseFromServer.json();
   console.log("Fetched venue polygons:", venueGeoJson);
+
+  // Store venue data globally for search functionality
+  globalVenueGeoJson = venueGeoJson;
+
   await setupVenueDataSources(venueGeoJson);
+
+  // Initialize search box
+  initBuildingSearchBox();
 
   // Inject Z-clipping bar HTML
   const zClippingBarContainer = document.getElementById(
@@ -386,6 +396,291 @@ function setupVenueClickInteraction() {
       isProcessingClick = false;
     }
   }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+}
+
+// Initialize building search box functionality
+function initBuildingSearchBox() {
+  // Create floating search container
+  const searchContainer = document.createElement("div");
+  searchContainer.id = "buildingSearchContainer";
+  searchContainer.className = "building-search-container";
+
+  // Create search input
+  const searchInput = document.createElement("input");
+  searchInput.id = "buildingSearchInput";
+  searchInput.type = "text";
+  searchInput.placeholder = "Search buildings...";
+  searchInput.className = "building-search-input";
+
+  // Create dropdown container
+  const dropdownContainer = document.createElement("div");
+  dropdownContainer.id = "buildingSearchDropdown";
+  dropdownContainer.className = "search-dropdown";
+  dropdownContainer.style.display = "none";
+
+  // Assemble the search box
+  searchContainer.appendChild(searchInput);
+  searchContainer.appendChild(dropdownContainer);
+
+  // Add to body as floating overlay
+  document.body.appendChild(searchContainer);
+
+  // Set up event listeners
+  setupSearchEventListeners(searchInput, dropdownContainer);
+}
+
+// Set up search box event listeners
+function setupSearchEventListeners(searchInput, dropdownContainer) {
+  let allBuildings = [];
+
+  // Extract building data from venue GeoJSON
+  if (globalVenueGeoJson && globalVenueGeoJson.features) {
+    allBuildings = globalVenueGeoJson.features
+      .filter(
+        (feature) => feature.properties && feature.properties.buildingName
+      )
+      .map((feature) => ({
+        name: feature.properties.buildingName,
+        venueId: feature.id,
+        feature: feature,
+      }));
+  }
+
+  // Show dropdown on focus
+  searchInput.addEventListener("focus", () => {
+    showSearchDropdown(dropdownContainer, allBuildings, "");
+  });
+
+  // Filter on input
+  searchInput.addEventListener("input", (e) => {
+    const query = e.target.value.trim();
+    showSearchDropdown(dropdownContainer, allBuildings, query);
+  });
+
+  // Hide dropdown when clicking outside
+  document.addEventListener("click", (e) => {
+    if (
+      !searchInput.contains(e.target) &&
+      !dropdownContainer.contains(e.target)
+    ) {
+      dropdownContainer.style.display = "none";
+    }
+  });
+
+  // Handle enter key
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const visibleItems = dropdownContainer.querySelectorAll(
+        ".search-dropdown-item:not([style*='display: none'])"
+      );
+      if (visibleItems.length > 0) {
+        // Select first visible item
+        const firstItem = visibleItems[0];
+        const venueId = firstItem.dataset.venueId;
+        selectBuilding(venueId, searchInput, dropdownContainer);
+      }
+    }
+  });
+}
+
+// Show search dropdown with filtered results
+function showSearchDropdown(dropdownContainer, buildings, query) {
+  if (!dropdownContainer) return;
+
+  dropdownContainer.innerHTML = "";
+
+  const filteredBuildings = buildings.filter((building) => {
+    if (!query) return true;
+    return building.name.toLowerCase().includes(query.toLowerCase());
+  });
+
+  if (filteredBuildings.length === 0) {
+    const noResults = document.createElement("div");
+    noResults.className = "search-dropdown-item no-results";
+    noResults.textContent = "No buildings found";
+    dropdownContainer.appendChild(noResults);
+  } else {
+    filteredBuildings.forEach((building) => {
+      const item = document.createElement("div");
+      item.className = "search-dropdown-item";
+      item.dataset.venueId = building.venueId;
+      item.textContent = building.name;
+
+      // Click handler
+      item.addEventListener("click", () => {
+        selectBuilding(
+          building.venueId,
+          document.getElementById("buildingSearchInput"),
+          dropdownContainer
+        );
+      });
+
+      dropdownContainer.appendChild(item);
+    });
+  }
+
+  dropdownContainer.style.display = "block";
+}
+
+// Handle building selection
+async function selectBuilding(venueId, searchInput, dropdownContainer) {
+  try {
+    // Hide dropdown and clear input
+    dropdownContainer.style.display = "none";
+
+    // Find the selected building name and set it in input
+    const selectedBuilding = globalVenueGeoJson.features.find(
+      (f) => f.id === venueId
+    );
+    if (selectedBuilding) {
+      searchInput.value = selectedBuilding.properties.buildingName;
+    }
+
+    console.log(`Selected building: ${venueId}`);
+
+    // Check if building is already loaded (Smart Loading - Option B)
+    if (activeBuildings.has(venueId)) {
+      console.log("Building already loaded, resetting view...");
+
+      // Reset to ALL levels and re-center view
+      const building = activeBuildings.get(venueId);
+      if (typeof building.resetLevelBarAndShowAll === "function") {
+        building.resetLevelBarAndShowAll();
+      }
+
+      // Reset network visibility
+      if (activeNetworks.has(venueId)) {
+        const network = activeNetworks.get(venueId);
+        if (typeof network.showNetwork === "function") {
+          network.showNetwork();
+        }
+        if (typeof network.initNetworkToggle === "function") {
+          network.initNetworkToggle();
+        }
+      }
+
+      // Find venue entity and fly to it
+      const venueDataSources = viewer.dataSources._dataSources.filter(
+        (ds) => ds.name === "venue_polygon"
+      );
+      if (venueDataSources.length > 0) {
+        const venueEntity = venueDataSources[0].entities.getById(venueId);
+        if (venueEntity) {
+          await viewer.flyTo(venueEntity, {
+            duration: 2.0,
+            offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
+          });
+        }
+      }
+
+      lastActiveVenueId = venueId;
+      return;
+    }
+
+    // Reset previous building's level bar to ALL
+    if (lastActiveVenueId && activeBuildings.has(lastActiveVenueId)) {
+      const prevBuilding = activeBuildings.get(lastActiveVenueId);
+      if (typeof prevBuilding.resetLevelBarAndShowAll === "function") {
+        prevBuilding.resetLevelBarAndShowAll();
+      }
+    }
+
+    // Load building data (similar to venue click behavior)
+    const buildingResponse = await fetch(
+      `${API_BASE_URL}/api/smo3dm/building_data?venue_id=${encodeURIComponent(
+        venueId
+      )}`,
+      {
+        credentials: "same-origin",
+      }
+    );
+
+    const networkResponse = await fetch(
+      `${API_BASE_URL}/api/network/network_data?venue_id=${encodeURIComponent(
+        venueId
+      )}`,
+      {
+        credentials: "same-origin",
+      }
+    );
+
+    // Load network data if available
+    if (networkResponse.ok) {
+      const networkData = await networkResponse.json();
+      const indoorNetwork = new IndoorNetwork(viewer, networkData);
+      activeNetworks.set(venueId, indoorNetwork);
+
+      if (typeof indoorNetwork.show === "function") {
+        indoorNetwork.show();
+      }
+      if (typeof indoorNetwork.initNetworkToggle === "function") {
+        indoorNetwork.initNetworkToggle();
+      }
+    }
+
+    // Load building data
+    if (buildingResponse.ok) {
+      const buildingData = await buildingResponse.json();
+      const buildingIndoor = new BuildingIndoor(viewer, buildingData);
+      activeBuildings.set(venueId, buildingIndoor);
+
+      // Find the venue entity first and fly to it before hiding
+      const venueDataSources = viewer.dataSources._dataSources.filter(
+        (ds) => ds.name === "venue_polygon"
+      );
+      let venueEntity = null;
+      if (venueDataSources.length > 0) {
+        venueEntity = venueDataSources[0].entities.getById(venueId);
+        if (venueEntity) {
+          // Fly to the venue location first with custom duration
+          await viewer.flyTo(venueEntity, {
+            duration: 2.0,
+            offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
+          });
+          // Then hide the venue entity
+          venueEntity.show = false;
+        }
+      }
+
+      // Show building and initialize level bar
+      if (typeof buildingIndoor.show === "function") {
+        await buildingIndoor.show();
+      }
+      if (typeof buildingIndoor.initLevelBar === "function") {
+        buildingIndoor.initLevelBar();
+      }
+
+      // If we couldn't find the venue entity, try to fly to the building's first unit or feature
+      if (
+        !venueEntity &&
+        buildingData.units &&
+        buildingData.units.features.length > 0
+      ) {
+        const firstUnit = buildingData.units.features[0];
+        if (firstUnit.geometry && firstUnit.geometry.coordinates) {
+          const coords = firstUnit.geometry.coordinates[0][0]; // Get first coordinate
+          const position = Cesium.Cartesian3.fromDegrees(
+            coords[0],
+            coords[1],
+            100
+          );
+          viewer.camera.flyTo({
+            destination: position,
+            duration: 2.0,
+          });
+        }
+      }
+
+      lastActiveVenueId = venueId;
+      console.log(
+        `Building loaded and displayed: ${selectedBuilding.properties.buildingName}`
+      );
+    } else {
+      console.error("Failed to fetch building data:", buildingResponse.status);
+    }
+  } catch (error) {
+    console.error("Error selecting building:", error);
+  }
 }
 
 /**
