@@ -4,7 +4,13 @@ WORKDIR /usr/app
 
 # Copy package files first for better Docker layer caching
 COPY package*.json ./
-RUN npm install
+
+# Configure npm for corporate/firewall environments
+RUN npm config set strict-ssl false && \
+    npm config set registry https://registry.npmjs.org/ && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm install --include=dev --verbose 
 
 # In development, source code will be mounted as volume
 # So we don't need to COPY . . here

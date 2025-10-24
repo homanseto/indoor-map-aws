@@ -25,12 +25,12 @@ This project uses Docker Compose to manage a Node.js backend, MongoDB, and PostG
 Edit the `.env` file to set database credentials and connection strings. Example:
 
 ```
-MONGO_URL=mongodb://mongo:27017/indoor_app
-POSTGIS_URL=postgres://postgis:postgis@postgis:5432/indoor_app
+MONGO_URL=mongodb://mongo:27017/indoor_map
+POSTGIS_URL=postgres://postgis:postgis@postgis:5432/indoor_map
 MONGO_INITDB_ROOT_USERNAME=admin
 MONGO_INITDB_ROOT_PASSWORD=adminpassword
-MONGO_INITDB_DATABASE=indoor_app
-POSTGRES_DB=indoor_app
+MONGO_INITDB_DATABASE=indoor_map
+POSTGRES_DB=indoor_map
 POSTGRES_USER=postgis
 POSTGRES_PASSWORD=postgispassword
 ```
@@ -291,7 +291,7 @@ docker-compose -f docker-compose.dev.yml logs -f web
 # Execute commands in running containers
 docker exec -it web bash
 docker exec -it mongodb mongosh
-docker exec -it postgis psql -U postgis -d indoor_app
+docker exec -it postgis psql -U postgis -d indoor_map
 
 # Check container status
 docker-compose -f docker-compose.dev.yml ps
@@ -311,11 +311,11 @@ docker-compose -f docker-compose.dev.yml pull
 docker exec -it mongodb mongosh admin -u admin -p adminpassword
 
 # Access PostGIS
-docker exec -it postgis psql -U postgis -d indoor_app
+docker exec -it postgis psql -U postgis -d indoor_map
 
 # Backup databases
 docker exec mongodb mongodump --out /data/backup
-docker exec postgis pg_dump -U postgis indoor_app > backup.sql
+docker exec postgis pg_dump -U postgis indoor_map > backup.sql
 
 # Reset database (⚠️ DATA LOSS)
 docker-compose -f docker-compose.dev.yml down

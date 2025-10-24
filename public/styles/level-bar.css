@@ -2,7 +2,7 @@
 
 .level-bar-bootstrap {
   position: absolute;
-  top: 40px;
+  top: 100px;
   left: 32px;
   z-index: 1000;
   display: flex;

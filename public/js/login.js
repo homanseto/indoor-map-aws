@@ -1,7 +1,7 @@
 // public/js/login.js
 
 const API_BASE_URL =
-  window.location.port === "3001" ? "http://localhost:3001" : "";
+  window.location.port === "3002" ? "http://localhost:3002" : "";
 
 // login.js: Attach login logic after modal is injected
 console.log("[login.js] Loaded.");

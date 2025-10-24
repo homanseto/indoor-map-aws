@@ -46,7 +46,7 @@ router.get("/test-db", async (req, res) => {
 // GET /test-read-json?file=filename.json
 router.get("/test-read-json", async (req, res) => {
   const fileName = req.query.fileName;
-  const testDir = "./testing-data";
+  const testDir = "./testing-data/indoor";
   try {
     const filePath = path.join(testDir, fileName);
     if (!filePath) {

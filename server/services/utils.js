@@ -7,6 +7,18 @@ import { getMongoClient } from "../dbServices/mongoClient.js";
 export class Utils {
   async convertToVenueMongoDBTable(data) {
     console.log(data);
+    data.address = data.address.content.features;
+    data.building = data.building.content.features;
+    data.footprint = data.footprint.content.features;
+    data.level = data.level.content.features;
+    data.unit = data.unit.content.features;
+    data.opening = data.opening.content.features;
+    data.window = data.window.content.features;
+    data.amenities = data.amenities.content.features;
+    data.anchors = data.anchors.content.features;
+    data.occupants = data.occupants.content.features;
+    data.venue = data.venue.content.features;
+
     const venue = data.venue[0];
     const venueId = venue.id;
     venue.properties.height = data.height;
@@ -30,20 +42,32 @@ export class Utils {
   }
 
   joinOccupantwithAnchor(data) {
-    const anchors = data.anchors;
-    data.occupants.forEach((occ) => {
-      const matchedAnchor = anchors.find(
-        (anc) => anc.id === occ.properties.anchor_id
-      );
-      if (matchedAnchor) {
-        occ.geometry = matchedAnchor.geometry;
-        occ.properties.nameEn = occ.properties.name.en;
-        occ.properties.nameZh = occ.properties.name.zh
-          ? matchedAnchor.properties.name.zh
-          : "";
-        delete occ.properties.anchor_id;
-      }
-    });
+    try {
+      const anchors = data.anchors;
+      data.occupants.forEach((occ) => {
+        const matchedAnchor = anchors.find(
+          (anc) => anc.id === occ.properties.anchor_id
+        );
+        if (matchedAnchor) {
+          occ.geometry = matchedAnchor.geometry;
+          if (occ.properties.name) {
+            occ.properties.nameEn = occ.properties.name.en
+              ? occ.properties.name.en
+              : "";
+            occ.properties.nameZh = occ.properties.name.zh
+              ? occ.properties.name.zh
+              : "";
+          } else {
+            occ.properties.nameEn = "";
+            occ.properties.nameZh = "";
+          }
+
+          delete occ.properties.anchor_id;
+        }
+      });
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   addVenueIdToAllFeatures(data, venueId) {
