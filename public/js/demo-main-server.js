@@ -542,6 +542,18 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
     if (activeBuildings.has(venueId)) {
       console.log("Building already loaded, resetting view...");
 
+      // Reset previous building's level bar if switching to a different building
+      if (
+        lastActiveVenueId &&
+        activeBuildings.has(lastActiveVenueId) &&
+        lastActiveVenueId !== venueId
+      ) {
+        const prevBuilding = activeBuildings.get(lastActiveVenueId);
+        if (typeof prevBuilding.resetLevelBarAndShowAll === "function") {
+          prevBuilding.resetLevelBarAndShowAll();
+        }
+      }
+
       // Reset to ALL levels and re-center view
       const building = activeBuildings.get(venueId);
       if (typeof building.resetLevelBarAndShowAll === "function") {
@@ -559,14 +571,52 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
         }
       }
 
-      // Find venue entity and fly to it
+      // Initialize level bar for the selected building
+      if (typeof building.initLevelBar === "function") {
+        building.initLevelBar();
+      }
+
+      // Fly to building - try venue entity first, then building units
       const venueDataSources = viewer.dataSources._dataSources.filter(
         (ds) => ds.name === "venue_polygon"
       );
+      let flownToBuilding = false;
+
       if (venueDataSources.length > 0) {
         const venueEntity = venueDataSources[0].entities.getById(venueId);
-        if (venueEntity) {
+        if (venueEntity && venueEntity.show) {
+          // Venue is visible, fly to it
           await viewer.flyTo(venueEntity, {
+            duration: 2.0,
+            offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
+          });
+          flownToBuilding = true;
+        }
+      }
+
+      // If venue entity is hidden, fly to building's units instead
+      if (
+        !flownToBuilding &&
+        building.dataSources &&
+        building.dataSources.units
+      ) {
+        const unitsDataSource = building.dataSources.units;
+        if (unitsDataSource.entities.values.length > 0) {
+          await viewer.flyTo(unitsDataSource.entities.values, {
+            duration: 2.0,
+            offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
+          });
+          flownToBuilding = true;
+        }
+      }
+
+      // Final fallback: try any available building entities
+      if (!flownToBuilding && building.dataSources) {
+        const availableDataSources = Object.values(building.dataSources).filter(
+          (ds) => ds.entities.values.length > 0
+        );
+        if (availableDataSources.length > 0) {
+          await viewer.flyTo(availableDataSources[0].entities.values, {
             duration: 2.0,
             offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
           });
