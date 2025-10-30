@@ -1,4 +1,5 @@
 import express from "express";
+import fs from "fs";
 import path from "path";
 import { MongoDbService } from "../dbServices/MongoDbService.js";
 import { PostgisService } from "../dbServices/PostgisService.js";
@@ -45,18 +46,22 @@ router.get("/test-db", async (req, res) => {
 
 // GET /test-read-json?file=filename.json
 router.get("/test-read-json", async (req, res) => {
-  const fileName = req.query.fileName;
   const testDir = "./testing-data/indoor";
+  const jsonfiles = await fs.readdirSync(testDir);
   try {
-    const filePath = path.join(testDir, fileName);
-    if (!filePath) {
-      return res.status(400).json({ error: "Missing 'file' query parameter" });
+    for (let jf of jsonfiles) {
+      const filePath = path.join(testDir, jf);
+      if (!filePath) {
+        return res
+          .status(400)
+          .json({ error: "Missing 'file' query parameter" });
+      }
+      const jsonService = new JsonFileService();
+      const json = await jsonService.readJson(filePath);
+      const venues = await utils.convertToVenueMongoDBTable(json.data);
+      console.log("Read JSON from", filePath, ":", json);
     }
-    const jsonService = new JsonFileService();
-    const json = await jsonService.readJson(filePath);
-    const venues = await utils.convertToVenueMongoDBTable(json.data);
-    console.log("Read JSON from", filePath, ":", json);
-    res.json(venues);
+    res.json(jsonfiles);
   } catch (err) {
     console.error("Error reading JSON file:", err.message);
     res.status(500).json({ error: "Failed to read or parse file" });

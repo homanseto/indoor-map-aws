@@ -61,6 +61,11 @@ export const indoorStyles = {
       fill: new Cesium.Color(0.75, 1, 0.91, 1),
       outline: false,
     },
+    opentobelow: {
+      stroke: new Cesium.Color(0, 0, 0, 0),
+      fill: new Cesium.Color(1, 1, 1, 0.1),
+      outline: false,
+    },
     ramp: {
       stroke: new Cesium.Color(0.7, 0.7, 0.7, 1),
       fill: new Cesium.Color(1, 0.83, 0.5, 1),

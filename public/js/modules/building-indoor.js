@@ -68,6 +68,9 @@ export class BuildingIndoor {
     }
 
     for (const { dataKey, styleKey } of featureTypes) {
+      if (dataKey === "occupants") {
+        console.log(dataKey);
+      }
       const featureCollection = this.buildingData[dataKey];
       if (
         !featureCollection ||

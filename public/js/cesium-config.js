@@ -71,6 +71,7 @@ export function initializeCesiumViewer(containerId) {
 
   // Create the base imagery layer
   const basemapLayer = new Cesium.ImageryLayer(basemapProvider);
+  // basemapLayer.alpha = 0.7;
 
   // Initialize Cesium viewer with optimized settings for 3D indoor mapping
   const viewer = new Cesium.Viewer(containerId, {
@@ -84,6 +85,11 @@ export function initializeCesiumViewer(containerId) {
     animation: false, // Disable animation controls
     scene3DOnly: true, // Force 3D mode only
   });
+
+  // Remove any default imagery layers
+  // viewer.imageryLayers.removeAll();
+
+  // configure2DBasemap(viewer);
 
   // Configure viewer credits display
   configureCredits(viewer, basemapProvider);
@@ -103,6 +109,54 @@ export function initializeCesiumViewer(containerId) {
   console.log("Cesium viewer initialized successfully");
   return viewer;
 }
+
+function configure2DBasemap(viewer) {
+  const scene = viewer.scene;
+  const globe = scene.globe;
+
+  // Configure globe as flat 2D surface
+  globe.depthTestAgainstTerrain = false;
+  globe.showGroundAtmosphere = false; // Remove atmospheric effects
+  // globe.baseColor = Cesium.Color.WHITE; // Set base color to white
+
+  // Ensure the basemap is always rendered below everything
+  globe.backFaceCulling = false;
+
+  // Disable terrain sampling - treat as flat surface
+  if (viewer.terrainProvider instanceof Cesium.EllipsoidTerrainProvider) {
+    // This is already flat, but we'll make sure
+    console.log("Using flat ellipsoid terrain provider");
+  }
+
+  // Configure camera to work with 2D basemap but allow 3D data above
+  scene.screenSpaceCameraController.enableCollisionDetection = false;
+  scene.screenSpaceCameraController.minimumZoomDistance = 1;
+  scene.screenSpaceCameraController.maximumZoomDistance = 10000000;
+}
+
+// // Add this new function to fix the globe configuration
+// export function configureGlobeForUnderground(viewer) {
+//   const scene = viewer.scene;
+//   const globe = viewer.scene.globe;
+
+//   // Fix blue color by disabling default globe material
+//   globe.baseColor = Cesium.Color.WHITE; // Use white instead of default blue
+//   globe.showGroundAtmosphere = false; // Disable atmospheric blue effect
+
+//   // Enable underground mode
+//   globe.depthTestAgainstTerrain = false; // Allow seeing through terrain
+
+//   // Configure camera for underground viewing
+//   scene.screenSpaceCameraController.enableCollisionDetection = false;
+//   scene.screenSpaceCameraController.minimumZoomDistance = 1; // Allow very close zoom
+//   scene.screenSpaceCameraController.maximumZoomDistance = 10000000; // Allow far zoom
+
+//   // Enable depth testing but allow underground viewing
+//   scene.globe.depthTestAgainstTerrain = false;
+
+//   // Optional: Adjust near/far planes for better underground rendering
+//   scene.logarithmicDepthBuffer = false; // Can help with depth precision
+// }
 
 /* ================================
    HELPER FUNCTIONS

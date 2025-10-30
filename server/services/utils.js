@@ -13,10 +13,10 @@ export class Utils {
     data.level = data.level.content.features;
     data.unit = data.unit.content.features;
     data.opening = data.opening.content.features;
-    data.window = data.window.content.features;
+    data.window = data.window ? data.window.content.features : null;
     data.amenities = data.amenities.content.features;
-    data.anchors = data.anchors.content.features;
-    data.occupants = data.occupants.content.features;
+    data.anchors = data.anchors ? data.anchors.content.features : null;
+    data.occupants = data.occupants ? data.occupants.content.features : null;
     data.venue = data.venue.content.features;
 
     const venue = data.venue[0];
@@ -28,7 +28,9 @@ export class Utils {
     venue.displayName = data.displayName;
     venue.buildingName = data.buildingName;
     venue.LastAmendmentDate = data.LastAmendmentDate;
-    this.joinOccupantwithAnchor(data);
+    if (data.occupants && data.anchors) {
+      this.joinOccupantwithAnchor(data);
+    }
     this.addVenueIdToAllFeatures(data, venueId);
     data.venue_id = venueId;
     delete data.venue;
@@ -284,107 +286,154 @@ export class Utils {
         };
       }),
     };
-    const windowNumber = buildingData.window.length;
-    const windowFeatureCollection = {
-      type: "FeatureCollection",
-      totalFeatures: windowNumber,
-      features: buildingData.window.map((window, i) => {
-        const matchLevel = levelFloorPolyIdMap.get(
-          window.properties.FloorPolyID
-        );
-        const properties = window.properties;
-        properties.feature_type = "window";
-        properties.buildingType = buildingData.buildingType; // add buildingType to properties
-        properties.displayName = buildingData.displayName;
-        properties.buildingName = buildingData.buildingName;
-        properties.LastAmendmentDate = buildingData.LastAmendmentDate;
-        properties.region = buildingData.region;
-        properties.venue_id = buildingData.venue_id;
-        properties.level_id = matchLevel ? matchLevel.id : "";
-        properties.levelShortName = matchLevel
-          ? matchLevel.properties.short_name.en
-          : "";
-        properties.ordinal = matchLevel ? matchLevel.properties.ordinal : null;
-        return {
-          type: "Feature",
-          id: window.id,
-          geometry: window.geometry,
-          properties: properties,
-        };
-      }),
-    };
+    let windowFeatureCollection = null;
+    if (buildingData.window) {
+      const windowNumber = buildingData.window.length;
+      windowFeatureCollection = {
+        type: "FeatureCollection",
+        totalFeatures: windowNumber,
+        features: buildingData.window.map((window, i) => {
+          const matchLevel = levelFloorPolyIdMap.get(
+            window.properties.FloorPolyID
+          );
+          const properties = window.properties;
+          properties.feature_type = "window";
+          properties.buildingType = buildingData.buildingType; // add buildingType to properties
+          properties.displayName = buildingData.displayName;
+          properties.buildingName = buildingData.buildingName;
+          properties.LastAmendmentDate = buildingData.LastAmendmentDate;
+          properties.region = buildingData.region;
+          properties.venue_id = buildingData.venue_id;
+          properties.level_id = matchLevel ? matchLevel.id : "";
+          properties.levelShortName = matchLevel
+            ? matchLevel.properties.short_name.en
+            : "";
+          properties.ordinal = matchLevel
+            ? matchLevel.properties.ordinal
+            : null;
+          return {
+            type: "Feature",
+            id: window.id,
+            geometry: window.geometry,
+            properties: properties,
+          };
+        }),
+      };
+    }
+
     let unitMapWithLevelInfo = new Map();
     if (unitFeatureCollection.features.length > 0) {
       unitFeatureCollection.features.forEach((unit) => {
         unitMapWithLevelInfo.set(unit.id, unit);
       });
     }
+    let amenitiesFeatureCollection = null;
+    if (buildingData.amenities) {
+      const amenitiesNumber = buildingData.amenities.length;
+      amenitiesFeatureCollection = {
+        type: "FeatureCollection",
+        totalFeatures: amenitiesNumber,
+        features: buildingData.amenities.map((amenity, i) => {
+          const properties = amenity.properties;
+          const matchUnit = unitMapWithLevelInfo.get(
+            amenity.properties.unit_ids[0]
+          );
+          properties.feature_type = "amenity";
+          properties.buildingType = buildingData.buildingType; // add buildingType to properties
+          properties.displayName = buildingData.displayName;
+          properties.buildingName = buildingData.buildingName;
+          properties.LastAmendmentDate = buildingData.LastAmendmentDate;
+          properties.region = buildingData.region;
+          properties.venue_id = buildingData.venue_id;
+          properties.unit_id = properties.unit_ids[0];
+          properties.level_id = matchUnit ? matchUnit.properties.level_id : "";
+          properties.levelShortName = matchUnit
+            ? matchUnit.properties.levelShortName
+            : "";
+          properties.ordinal = matchUnit ? matchUnit.properties.ordinal : null;
+          return {
+            type: "Feature",
+            id: amenity.id,
+            geometry: amenity.geometry,
+            properties: properties,
+          };
+        }),
+      };
+    }
+    let occupantFeatureCollection = null;
+    if (buildingData.occupants) {
+      const occupantNumber = buildingData.occupants.length;
+      occupantFeatureCollection = {
+        type: "FeatureCollection",
+        totalFeatures: occupantNumber,
+        features: buildingData.occupants.map((occupant, i) => {
+          const properties = occupant.properties;
+          const matchUnit = unitMapWithLevelInfo.get(
+            occupant.properties.unit_id
+          );
+          properties.feature_type = "occupant";
+          properties.buildingType = buildingData.buildingType; // add buildingType to properties
+          properties.displayName = buildingData.displayName;
+          properties.buildingName = buildingData.buildingName;
+          properties.LastAmendmentDate = buildingData.LastAmendmentDate;
+          properties.region = buildingData.region;
+          properties.venue_id = buildingData.venue_id;
+          properties.level_id = matchUnit ? matchUnit.properties.level_id : "";
+          properties.levelShortName = matchUnit
+            ? matchUnit.properties.levelShortName
+            : "";
+          properties.ordinal = matchUnit ? matchUnit.properties.ordinal : null;
+          return {
+            type: "Feature",
+            id: occupant.id,
+            geometry: occupant.geometry,
+            properties: properties,
+          };
+        }),
+      };
+    }
 
-    const amenitiesNumber = buildingData.amenities.length;
-    const amenitiesFeatureCollection = {
-      type: "FeatureCollection",
-      totalFeatures: amenitiesNumber,
-      features: buildingData.amenities.map((amenity, i) => {
-        const properties = amenity.properties;
-        const matchUnit = unitMapWithLevelInfo.get(
-          amenity.properties.unit_ids[0]
-        );
-        properties.feature_type = "amenity";
-        properties.buildingType = buildingData.buildingType; // add buildingType to properties
-        properties.displayName = buildingData.displayName;
-        properties.buildingName = buildingData.buildingName;
-        properties.LastAmendmentDate = buildingData.LastAmendmentDate;
-        properties.region = buildingData.region;
-        properties.venue_id = buildingData.venue_id;
-        properties.unit_id = properties.unit_ids[0];
-        properties.level_id = matchUnit ? matchUnit.properties.level_id : "";
-        properties.levelShortName = matchUnit
-          ? matchUnit.properties.levelShortName
-          : "";
-        properties.ordinal = matchUnit ? matchUnit.properties.ordinal : null;
-        return {
-          type: "Feature",
-          id: amenity.id,
-          geometry: amenity.geometry,
-          properties: properties,
-        };
-      }),
-    };
-    const occupantNumber = buildingData.occupants.length;
-    const occupantFeatureCollection = {
-      type: "FeatureCollection",
-      totalFeatures: occupantNumber,
-      features: buildingData.occupants.map((occupant, i) => {
-        const properties = occupant.properties;
-        const matchUnit = unitMapWithLevelInfo.get(occupant.properties.unit_id);
-        properties.feature_type = "occupant";
-        properties.buildingType = buildingData.buildingType; // add buildingType to properties
-        properties.displayName = buildingData.displayName;
-        properties.buildingName = buildingData.buildingName;
-        properties.LastAmendmentDate = buildingData.LastAmendmentDate;
-        properties.region = buildingData.region;
-        properties.venue_id = buildingData.venue_id;
-        properties.level_id = matchUnit ? matchUnit.properties.level_id : "";
-        properties.levelShortName = matchUnit
-          ? matchUnit.properties.levelShortName
-          : "";
-        properties.ordinal = matchUnit ? matchUnit.properties.ordinal : null;
-        return {
-          type: "Feature",
-          id: occupant.id,
-          geometry: occupant.geometry,
-          properties: properties,
-        };
-      }),
-    };
-    return {
+    const joined = {
       venue_id: buildingData.venue_id,
       levels: levelFeatureCollection,
       units: unitFeatureCollection,
       openings: openingFeatureCollection,
-      windows: windowFeatureCollection,
-      amenities: amenitiesFeatureCollection,
-      occupants: occupantFeatureCollection,
     };
+    if (windowFeatureCollection) joined.windows = windowFeatureCollection;
+    if (occupantFeatureCollection) joined.occupants = occupantFeatureCollection;
+    if (amenitiesFeatureCollection)
+      joined.amenities = amenitiesFeatureCollection;
+    return joined;
   }
+  readAllFilesInFolder = async (folderPath) => {
+    try {
+      // Read all files and directories in the folder
+      const files = await fs.readdirSync(folderPath);
+
+      // Filter out directories and read only files
+      // const filePromises = files.map(async (file) => {
+      //   const filePath = path.join(folderPath, file);
+      //   const stats = await fs.stat(filePath);
+
+      //   if (stats.isFile()) {
+      //     // Read the file content
+      //     const content = await fs.readFileSync(filePath, "utf-8");
+      //     return {
+      //       fileName: file,
+      //       content: content,
+      //     };
+      //   }
+      //   return null;
+      // });
+
+      // // Wait for all file reads to complete
+      // const fileContents = await Promise.all(filePromises);
+
+      // // Filter out null values (directories)
+      // return fileContents.filter(Boolean);
+    } catch (error) {
+      console.error("Error reading files:", error);
+      throw error;
+    }
+  };
 }
