@@ -80,6 +80,8 @@ export function initializeCesiumViewer(containerId) {
     baseLayerPicker: false, // Disable base layer picker (we use fixed HK gov layers)
     sceneModePicker: false, // Disable scene mode picker (3D only)
     fullscreenButton: false, // Disable fullscreen button
+    homeButton: false, // Disable home button
+    vrButton: false, // Disable VR/help button
     geocoder: false, // Disable geocoder search
     timeline: false, // Disable timeline (not needed for indoor mapping)
     animation: false, // Disable animation controls
@@ -102,6 +104,9 @@ export function initializeCesiumViewer(containerId) {
 
   // Configure default view settings
   configureDefaultView();
+
+  // Remove any remaining toolbar elements
+  removeRemainingToolbarElements(viewer);
 
   // Enable performance debugging
   viewer.scene.debugShowFramesPerSecond = true;
@@ -251,6 +256,37 @@ export function createEventHandler(viewer) {
   const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
   console.log("Created screen space event handler");
   return handler;
+}
+
+/**
+ * Removes any remaining toolbar elements that might still be visible
+ * This ensures a completely clean interface for custom controls
+ *
+ * @param {Cesium.Viewer} viewer - The Cesium viewer instance
+ */
+function removeRemainingToolbarElements(viewer) {
+  // Wait for the viewer to fully initialize before attempting to remove elements
+  setTimeout(() => {
+    try {
+      // Remove the entire toolbar container if it exists
+      const toolbar = viewer.container.querySelector(".cesium-viewer-toolbar");
+      if (toolbar) {
+        toolbar.style.display = "none";
+      }
+
+      // Remove any remaining button containers
+      const buttonContainers = viewer.container.querySelectorAll(
+        ".cesium-button, .cesium-toolbar-button, .cesium-navigation-help-button"
+      );
+      buttonContainers.forEach((button) => {
+        button.style.display = "none";
+      });
+
+      console.log("Removed remaining Cesium toolbar elements");
+    } catch (error) {
+      console.warn("Could not remove all toolbar elements:", error);
+    }
+  }, 100); // Small delay to ensure DOM is ready
 }
 
 /**

@@ -74,3 +74,22 @@ a {
 .search-dropdown-item.no-results:hover {
   background-color: white;
 }
+
+/* Hide all Cesium default toolbar elements */
+.cesium-viewer-toolbar,
+.cesium-button,
+.cesium-toolbar-button,
+.cesium-navigation-help-button,
+.cesium-home-button,
+.cesium-scene3DPickerWrapper,
+.cesium-baseLayerPickerDropDown,
+.cesium-vrButton {
+  display: none !important;
+}
+
+/* Ensure our custom controls have proper z-index */
+.building-search-container,
+.sidebar-toggle-btn,
+.map-sidebar {
+  z-index: 10000 !important;
+}
