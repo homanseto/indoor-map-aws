@@ -2,6 +2,7 @@ import { initializeCesiumViewer } from "./cesium-config.js";
 import { BuildingIndoor } from "./modules/building-indoor.js";
 import { IndoorNetwork } from "./modules/indoor-network.js";
 import { ZClippingManager } from "./utils/zClippingManager.js";
+import { initSidebar } from "./ui/sidebar.js";
 
 // Global variables for demo management
 let viewer;
@@ -114,6 +115,9 @@ async function initDemo() {
 
   // Initialize search box
   initBuildingSearchBox();
+
+  // Initialize sidebar
+  initSidebar(viewer);
 
   // Inject Z-clipping bar HTML
   const zClippingBarContainer = document.getElementById(
