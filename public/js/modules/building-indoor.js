@@ -482,6 +482,15 @@ export class BuildingIndoor {
       this.kickMode = input.checked;
       // Do not re-render level buttons, just re-apply filtering for current selection
       this.filterFeaturesByLevel(this.selectedLevelId, this.kickMode);
+      
+      // Notify other components about kick mode change
+      document.dispatchEvent(new CustomEvent('levelSelectionChanged', {
+        detail: { 
+          levelId: this.selectedLevelId, 
+          kickMode: this.kickMode,
+          buildingInstance: this
+        }
+      }));
     });
     label.appendChild(input);
     label.appendChild(document.createTextNode("Below"));
@@ -535,6 +544,15 @@ export class BuildingIndoor {
     }
     // Filter displayed features by selected level and kickMode
     this.filterFeaturesByLevel(levelId, this.kickMode);
+    
+    // Notify other components about level selection change
+    document.dispatchEvent(new CustomEvent('levelSelectionChanged', {
+      detail: { 
+        levelId: levelId, 
+        kickMode: this.kickMode,
+        buildingInstance: this
+      }
+    }));
   }
 
   // Filter features/entities by level and kickMode

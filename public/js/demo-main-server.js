@@ -116,8 +116,18 @@ async function initDemo() {
   // Initialize search box
   initBuildingSearchBox();
 
-  // Initialize sidebar
-  initSidebar(viewer);
+  // Initialize sidebar and store global reference
+  console.log('[Demo] Initializing sidebar...');
+  window.mapSidebar = initSidebar(viewer);
+  console.log('[Demo] Sidebar initialized:', window.mapSidebar);
+  
+  // Debug: Show sidebar for testing (force visibility)
+  setTimeout(() => {
+    if (window.mapSidebar) {
+      console.log('[Demo] Forcing sidebar visible for testing...');
+      window.mapSidebar.show();
+    }
+  }, 1000);
 
   // Inject Z-clipping bar HTML
   const zClippingBarContainer = document.getElementById(
@@ -355,6 +365,16 @@ function setupVenueClickInteraction() {
                   if (typeof buildingIndoor.initLevelBar === "function") {
                     buildingIndoor.initLevelBar();
                   }
+                  
+                  // Set building context for sidebar 2D view
+                  console.log('[Demo] Setting building context - sidebar:', window.mapSidebar);
+                  if (window.mapSidebar && typeof window.mapSidebar.setBuildingContext === "function") {
+                    console.log('[Demo] Calling setBuildingContext for venue:', venueId);
+                    window.mapSidebar.setBuildingContext(buildingIndoor, venueId);
+                  } else {
+                    console.warn('[Demo] mapSidebar not available or setBuildingContext not a function');
+                  }
+                  
                   // Set this as the last active building
                   lastActiveVenueId = venueId;
                   console.log("Building data for venue", venueId, buildingData);
@@ -677,6 +697,15 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
       const buildingData = await buildingResponse.json();
       const buildingIndoor = new BuildingIndoor(viewer, buildingData);
       activeBuildings.set(venueId, buildingIndoor);
+
+      // Set building context for sidebar 2D view
+      console.log('[Demo] Setting building context (search) - sidebar:', window.mapSidebar);
+      if (window.mapSidebar && typeof window.mapSidebar.setBuildingContext === "function") {
+        console.log('[Demo] Calling setBuildingContext (search) for venue:', venueId);
+        window.mapSidebar.setBuildingContext(buildingIndoor, venueId);
+      } else {
+        console.warn('[Demo] mapSidebar not available or setBuildingContext not a function (search)');
+      }
 
       // Find the venue entity first and fly to it before hiding
       const venueDataSources = viewer.dataSources._dataSources.filter(
