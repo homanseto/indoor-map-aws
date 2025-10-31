@@ -74,7 +74,19 @@ export class Sidebar {
     this.toggleButton.title = "Show/Hide Legend";
     this.toggleButton.setAttribute("aria-label", "Toggle sidebar visibility");
 
+    // Create hover tooltip for map legend preview
+    this.createToggleTooltip();
+
     document.body.appendChild(this.toggleButton);
+  }
+
+  createToggleTooltip() {
+    this.toggleTooltip = document.createElement("div");
+    this.toggleTooltip.id = "sidebarToggleTooltip";
+    this.toggleTooltip.className = "sidebar-toggle-tooltip";
+    this.toggleTooltip.innerHTML = `<div class="tooltip-header">Map Legend</div>`;
+
+    document.body.appendChild(this.toggleTooltip);
   }
 
   setupEventListeners() {
@@ -95,6 +107,60 @@ export class Sidebar {
         this.toggle();
       }
     });
+
+    // Toggle button hover tooltip
+    this.setupToggleTooltip();
+  }
+
+  setupToggleTooltip() {
+    let tooltipTimeout;
+
+    // Show tooltip on hover (only when sidebar is hidden)
+    this.toggleButton.addEventListener("mouseenter", () => {
+      if (!this.isVisible) {
+        clearTimeout(tooltipTimeout);
+        tooltipTimeout = setTimeout(() => {
+          this.showToggleTooltip();
+        }, 500); // 500ms delay before showing
+      }
+    });
+
+    // Hide tooltip when leaving button or tooltip area
+    this.toggleButton.addEventListener("mouseleave", () => {
+      clearTimeout(tooltipTimeout);
+      tooltipTimeout = setTimeout(() => {
+        this.hideToggleTooltip();
+      }, 200); // Small delay to allow moving to tooltip
+    });
+
+    // Keep tooltip visible when hovering over it
+    this.toggleTooltip.addEventListener("mouseenter", () => {
+      clearTimeout(tooltipTimeout);
+    });
+
+    this.toggleTooltip.addEventListener("mouseleave", () => {
+      this.hideToggleTooltip();
+    });
+
+    // Hide tooltip when clicking toggle button
+    this.toggleButton.addEventListener("click", () => {
+      this.hideToggleTooltip();
+    });
+  }
+
+  showToggleTooltip() {
+    if (this.isVisible) return; // Don't show when sidebar is visible
+
+    const buttonRect = this.toggleButton.getBoundingClientRect();
+    this.toggleTooltip.style.right = `${
+      window.innerWidth - buttonRect.left + 10
+    }px`;
+    this.toggleTooltip.style.top = `${buttonRect.top}px`;
+    this.toggleTooltip.classList.add("visible");
+  }
+
+  hideToggleTooltip() {
+    this.toggleTooltip.classList.remove("visible");
   }
 
   startResize(e) {
@@ -245,16 +311,51 @@ export class Sidebar {
     header.appendChild(title);
     header.appendChild(chevron);
 
-    // Create items container
+    // Create items container with scrollable wrapper
     const itemsContainer = document.createElement("div");
     itemsContainer.className = "legend-items expanded";
     itemsContainer.id = `legend-items-${index}`;
 
-    // Add legend items
+    // Create scrollable content wrapper
+    const scrollWrapper = document.createElement("div");
+    scrollWrapper.className = "legend-scroll-wrapper";
+
+    // Create fade indicators for scroll boundaries
+    const topFade = document.createElement("div");
+    topFade.className = "legend-scroll-fade top";
+    const bottomFade = document.createElement("div");
+    bottomFade.className = "legend-scroll-fade bottom";
+
+    // Create scroll content area
+    const scrollContent = document.createElement("div");
+    scrollContent.className = "legend-scroll-content";
+
+    // Add legend items to scroll content
     section.items.forEach((item) => {
       const itemElement = this.createLegendItem(item);
-      itemsContainer.appendChild(itemElement);
+      scrollContent.appendChild(itemElement);
     });
+
+    // Create content indicator
+    const contentIndicator = document.createElement("div");
+    contentIndicator.className = "legend-content-indicator";
+
+    // Assemble scroll structure
+    scrollWrapper.appendChild(topFade);
+    scrollWrapper.appendChild(scrollContent);
+    scrollWrapper.appendChild(bottomFade);
+    itemsContainer.appendChild(scrollWrapper);
+    itemsContainer.appendChild(contentIndicator);
+
+    // Setup scroll functionality for this section
+    this.setupSectionScrolling(
+      scrollWrapper,
+      scrollContent,
+      topFade,
+      bottomFade,
+      contentIndicator,
+      section
+    );
 
     // Make header collapsible
     const toggleSection = () => {
@@ -262,6 +363,18 @@ export class Sidebar {
       itemsContainer.classList.toggle("expanded");
       chevron.innerHTML = isExpanded ? "▶" : "▼";
       header.setAttribute("aria-expanded", (!isExpanded).toString());
+
+      // Update scroll indicators when section is toggled
+      setTimeout(() => {
+        this.updateScrollIndicators(
+          scrollWrapper,
+          scrollContent,
+          topFade,
+          bottomFade,
+          contentIndicator,
+          section
+        );
+      }, 300); // Wait for animation to complete
     };
 
     header.addEventListener("click", toggleSection);
@@ -276,6 +389,146 @@ export class Sidebar {
     sectionContainer.appendChild(itemsContainer);
 
     return sectionContainer;
+  }
+
+  setupSectionScrolling(
+    scrollWrapper,
+    scrollContent,
+    topFade,
+    bottomFade,
+    contentIndicator,
+    section
+  ) {
+    // Update scroll indicators on scroll
+    const updateIndicators = () => {
+      this.updateScrollIndicators(
+        scrollWrapper,
+        scrollContent,
+        topFade,
+        bottomFade,
+        contentIndicator,
+        section
+      );
+    };
+
+    // Smooth scrolling behavior
+    scrollWrapper.addEventListener("scroll", () => {
+      requestAnimationFrame(updateIndicators);
+    });
+
+    // Individual mouse wheel scrolling
+    scrollWrapper.addEventListener("wheel", (e) => {
+      e.stopPropagation(); // Prevent parent scrolling
+
+      const scrollAmount = e.deltaY * 0.8; // Smooth scroll factor
+      scrollWrapper.scrollTop += scrollAmount;
+      e.preventDefault();
+    });
+
+    // Keyboard navigation within section
+    scrollContent.addEventListener("keydown", (e) => {
+      const items = scrollContent.querySelectorAll(".legend-item");
+      const currentIndex = Array.from(items).findIndex(
+        (item) =>
+          item === document.activeElement ||
+          item.contains(document.activeElement)
+      );
+
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          const nextIndex = Math.min(currentIndex + 1, items.length - 1);
+          if (items[nextIndex]) {
+            items[nextIndex].focus();
+            this.scrollItemIntoView(scrollWrapper, items[nextIndex]);
+          }
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          const prevIndex = Math.max(currentIndex - 1, 0);
+          if (items[prevIndex]) {
+            items[prevIndex].focus();
+            this.scrollItemIntoView(scrollWrapper, items[prevIndex]);
+          }
+          break;
+        case "Home":
+          e.preventDefault();
+          if (items[0]) {
+            items[0].focus();
+            scrollWrapper.scrollTop = 0;
+          }
+          break;
+        case "End":
+          e.preventDefault();
+          if (items[items.length - 1]) {
+            items[items.length - 1].focus();
+            scrollWrapper.scrollTop = scrollWrapper.scrollHeight;
+          }
+          break;
+      }
+    });
+
+    // Make legend items focusable for keyboard navigation
+    const items = scrollContent.querySelectorAll(".legend-item");
+    items.forEach((item, index) => {
+      item.tabIndex = 0;
+      item.setAttribute("role", "listitem");
+      item.addEventListener("focus", () => {
+        this.scrollItemIntoView(scrollWrapper, item);
+      });
+    });
+
+    // Initial update
+    setTimeout(() => updateIndicators(), 100);
+  }
+
+  updateScrollIndicators(
+    scrollWrapper,
+    scrollContent,
+    topFade,
+    bottomFade,
+    contentIndicator,
+    section
+  ) {
+    const scrollTop = scrollWrapper.scrollTop;
+    const scrollHeight = scrollWrapper.scrollHeight;
+    const clientHeight = scrollWrapper.clientHeight;
+    const maxScroll = scrollHeight - clientHeight;
+
+    // Show/hide fade indicators
+    topFade.style.opacity = scrollTop > 10 ? "1" : "0";
+    bottomFade.style.opacity = scrollTop < maxScroll - 10 ? "1" : "0";
+
+    // Update content indicator
+    const totalItems = section.items.length;
+    const visibleItems = Math.floor((clientHeight / scrollHeight) * totalItems);
+    const hiddenTop = Math.floor((scrollTop / scrollHeight) * totalItems);
+    const hiddenBottom = totalItems - visibleItems - hiddenTop;
+
+    let indicatorText = "";
+    if (hiddenTop > 0 && hiddenBottom > 0) {
+      indicatorText = `${hiddenTop} above, ${hiddenBottom} below`;
+    } else if (hiddenTop > 0) {
+      indicatorText = `${hiddenTop} more above`;
+    } else if (hiddenBottom > 0) {
+      indicatorText = `${hiddenBottom} more below`;
+    }
+
+    contentIndicator.textContent = indicatorText;
+    contentIndicator.style.display = indicatorText ? "block" : "none";
+  }
+
+  scrollItemIntoView(scrollWrapper, item) {
+    const wrapperRect = scrollWrapper.getBoundingClientRect();
+    const itemRect = item.getBoundingClientRect();
+
+    if (itemRect.top < wrapperRect.top) {
+      // Item is above visible area
+      scrollWrapper.scrollTop -= wrapperRect.top - itemRect.top + 10;
+    } else if (itemRect.bottom > wrapperRect.bottom) {
+      // Item is below visible area
+      scrollWrapper.scrollTop += itemRect.bottom - wrapperRect.bottom + 10;
+    }
   }
 
   createLegendItem(item) {
@@ -476,6 +729,9 @@ export class Sidebar {
     }
     if (this.toggleButton && this.toggleButton.parentNode) {
       this.toggleButton.parentNode.removeChild(this.toggleButton);
+    }
+    if (this.toggleTooltip && this.toggleTooltip.parentNode) {
+      this.toggleTooltip.parentNode.removeChild(this.toggleTooltip);
     }
 
     // Clean up event listeners

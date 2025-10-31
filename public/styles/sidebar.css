@@ -141,6 +141,94 @@
   background: #545b62;
 }
 
+/* Toggle Button Tooltip */
+.sidebar-toggle-tooltip {
+  position: fixed;
+  background: rgba(33, 37, 41, 0.95);
+  color: white;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 10002;
+  max-width: 250px;
+  transform: translateX(10px);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  pointer-events: none;
+}
+
+.sidebar-toggle-tooltip.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+  pointer-events: all;
+}
+
+.tooltip-header {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: #ffffff;
+}
+
+.tooltip-content {
+  margin-bottom: 8px;
+}
+
+.tooltip-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.tooltip-section:last-child {
+  margin-bottom: 0;
+}
+
+.tooltip-label {
+  font-size: 12px;
+  color: #ced4da;
+}
+
+.tooltip-indicators {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.tooltip-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: #6c757d;
+  border: 1px solid #495057;
+}
+
+.tooltip-indicator.circle {
+  border-radius: 50%;
+  background: #adb5bd;
+}
+
+.tooltip-indicator.line {
+  height: 3px;
+  background: #17a2b8;
+  border: none;
+}
+
+.tooltip-footer {
+  font-size: 11px;
+  color: #6c757d;
+  font-style: italic;
+  text-align: center;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #495057;
+}
+
 /* ===== LEGEND STYLES ===== */
 
 .legend-section {
@@ -196,8 +284,84 @@
 }
 
 .legend-items.expanded {
-  max-height: 500px;
+  max-height: 300px;
   padding: 0 20px 16px 20px;
+}
+
+/* Scrollable legend sections */
+.legend-scroll-wrapper {
+  position: relative;
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f1f1;
+}
+
+.legend-scroll-wrapper::-webkit-scrollbar {
+  width: 6px;
+}
+
+.legend-scroll-wrapper::-webkit-scrollbar-track {
+  background: #f8f9fa;
+  border-radius: 3px;
+}
+
+.legend-scroll-wrapper::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+  transition: background-color 0.2s ease;
+}
+
+.legend-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.legend-scroll-content {
+  padding: 0;
+}
+
+/* Scroll fade indicators */
+.legend-scroll-fade {
+  position: absolute;
+  left: 0;
+  right: 6px; /* Account for scrollbar */
+  height: 15px;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.legend-scroll-fade.top {
+  top: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+.legend-scroll-fade.bottom {
+  bottom: 0;
+  background: linear-gradient(
+    to top,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+/* Content indicator */
+.legend-content-indicator {
+  padding: 4px 8px;
+  font-size: 11px;
+  color: #6c757d;
+  text-align: center;
+  background: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  display: none;
+  font-style: italic;
 }
 
 .legend-item {
@@ -206,10 +370,24 @@
   gap: 12px;
   padding: 8px 0;
   border-bottom: 1px solid #f5f5f5;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
 }
 
 .legend-item:last-child {
   border-bottom: none;
+}
+
+.legend-item:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+  background-color: rgba(0, 123, 255, 0.1);
+}
+
+.legend-item:focus-visible {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+  background-color: rgba(0, 123, 255, 0.1);
 }
 
 /* Legend Indicators */
@@ -428,5 +606,39 @@
 
   .sidebar-content::-webkit-scrollbar-thumb:hover {
     background: #adb5bd;
+  }
+
+  .legend-scroll-wrapper::-webkit-scrollbar-track {
+    background: #343a40;
+  }
+
+  .legend-scroll-wrapper::-webkit-scrollbar-thumb {
+    background: #6c757d;
+  }
+
+  .legend-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #adb5bd;
+  }
+
+  .legend-scroll-fade.top {
+    background: linear-gradient(
+      to bottom,
+      rgba(33, 37, 41, 0.9) 0%,
+      rgba(33, 37, 41, 0) 100%
+    );
+  }
+
+  .legend-scroll-fade.bottom {
+    background: linear-gradient(
+      to top,
+      rgba(33, 37, 41, 0.9) 0%,
+      rgba(33, 37, 41, 0) 100%
+    );
+  }
+
+  .legend-content-indicator {
+    background: #343a40;
+    border-top-color: #495057;
+    color: #adb5bd;
   }
 }
