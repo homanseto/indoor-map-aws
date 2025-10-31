@@ -350,35 +350,17 @@ export class Sidebar {
     const items = [];
     const unitStyles = indoorStyles.unit;
 
-    // Major unit categories
-    const majorCategories = [
-      "classroom",
-      "office",
-      "restroom",
-      "elevator",
-      "stairs",
-      "lobby",
-      "parking",
-      "storage",
-      "library",
-      "laboratory",
-      "foodservice",
-      "retail",
-      "residential",
-    ];
+    Object.entries(unitStyles).forEach(([name, category]) => {
+      const fillColor = category.fill;
 
-    majorCategories.forEach((category) => {
-      if (unitStyles[category]) {
-        const style = unitStyles[category];
-        const fillColor = style.fill;
-
-        items.push({
-          label: this.formatLabel(category),
-          backgroundColor: this.colorToRgba(fillColor),
-          borderColor: style.stroke ? this.colorToRgba(style.stroke) : "#666",
-          shape: "square",
-        });
-      }
+      items.push({
+        label: this.formatLabel(name),
+        backgroundColor: this.colorToRgba(fillColor),
+        borderColor: category.stroke
+          ? this.colorToRgba(category.stroke)
+          : "#666",
+        shape: "square",
+      });
     });
 
     return items;
@@ -388,26 +370,12 @@ export class Sidebar {
     const items = [];
     const amenityStyles = indoorStyles.amenity;
 
-    // Major amenity types
-    const majorAmenities = [
-      "elevator",
-      "stairs",
-      "restroom.male",
-      "restroom.female",
-      "parking",
-      "information",
-      "atm",
-      "wifi",
-    ];
-
-    majorAmenities.forEach((amenity) => {
-      if (amenityStyles[amenity]) {
-        items.push({
-          label: this.formatLabel(amenity.replace(".", " ")),
-          iconUrl: amenityStyles[amenity].image,
-          shape: "circle",
-        });
-      }
+    Object.entries(amenityStyles).forEach(([name, amenity]) => {
+      items.push({
+        label: this.formatLabel(name),
+        iconUrl: amenity.image,
+        shape: "circle",
+      });
     });
 
     return items;
@@ -417,26 +385,12 @@ export class Sidebar {
     const items = [];
     const occupantStyles = indoorStyles.occupant;
 
-    // Major occupant types
-    const majorOccupants = [
-      "restaurant",
-      "shopping",
-      "bank",
-      "gym",
-      "library",
-      "medical",
-      "education",
-      "government",
-    ];
-
-    majorOccupants.forEach((occupant) => {
-      if (occupantStyles[occupant]) {
-        items.push({
-          label: this.formatLabel(occupant),
-          iconUrl: occupantStyles[occupant].image,
-          shape: "circle",
-        });
-      }
+    Object.entries(occupantStyles).forEach(([name, occupant]) => {
+      items.push({
+        label: this.formatLabel(name),
+        iconUrl: occupant.image,
+        shape: "circle",
+      });
     });
 
     return items;

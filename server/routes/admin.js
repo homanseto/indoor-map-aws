@@ -27,7 +27,7 @@ router.post("/create-user", adminOnly, async (req, res) => {
     if (existing.rowCount > 0) {
       return res.status(409).json({ error: "Username already exists" });
     }
-    const hash = await bcrypt.hash(password, 10);
+    const hash = await bcrypt.hash(password, 12);
     // Use parameterized query to avoid SQL injection
     const insertSql = `INSERT INTO ${POSTGIS_TABLE.USERINFORMATION} (userName, password, role) VALUES ($1, $2, $3)`;
     await postgisService.query(insertSql, [userName, hash, role]);
