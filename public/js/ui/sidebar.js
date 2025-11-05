@@ -24,13 +24,7 @@ export class Sidebar {
     this.view2DButton = null;
 
     // 2D View Manager
-    console.log('[Sidebar] Creating ViewManager2D with viewer:', viewer);
-    try {
-      this.viewManager2D = new ViewManager2D(viewer);
-      console.log('[Sidebar] ViewManager2D created successfully');
-    } catch (error) {
-      console.error('[Sidebar] Failed to create ViewManager2D:', error);
-    }
+    this.viewManager2D = new ViewManager2D(viewer);
     this.currentBuilding = null;
     this.currentVenueId = null;
 
@@ -38,21 +32,13 @@ export class Sidebar {
   }
 
   init() {
-    console.log('[Sidebar] Starting initialization...');
     this.createSidebar();
-    console.log('[Sidebar] Sidebar container created');
     this.createToggleButton();
-    console.log('[Sidebar] Toggle button created');
     this.setupEventListeners();
-    console.log('[Sidebar] Event listeners setup');
     this.setupInfoBoxMonitoring();
-    console.log('[Sidebar] Info box monitoring setup');
     this.create2DViewControls();
-    console.log('[Sidebar] 2D view controls created');
     this.createLegend();
-    console.log('[Sidebar] Legend created');
     this.setupViewModeListener();
-    console.log('[Sidebar] View mode listener setup complete');
   }
 
   createSidebar() {
@@ -120,9 +106,8 @@ export class Sidebar {
   }
 
   create2DViewControls() {
-    console.log('[Sidebar] create2DViewControls called');
     if (!this.viewControls) {
-      console.error('[Sidebar] viewControls element not found');
+      console.error("[Sidebar] viewControls element not found");
       return;
     }
 
@@ -145,10 +130,8 @@ export class Sidebar {
       <span class="view-button-text">2D Top View</span>
     `;
     this.view2DButton.title = "Switch to 2D top-down view";
-    this.view2DButton.disabled = false; // TEMPORARILY ENABLED for testing
-    
-    console.log('[Sidebar] 2D view button created:', this.view2DButton);
-    
+    this.view2DButton.disabled = true; // Initially disabled until building is selected
+
     // Create status indicator
     const statusIndicator = document.createElement("div");
     statusIndicator.className = "view-status-indicator";
@@ -158,33 +141,13 @@ export class Sidebar {
     viewSection.appendChild(this.view2DButton);
     viewSection.appendChild(statusIndicator);
     this.viewControls.appendChild(viewSection);
-    
-    console.log('[Sidebar] 2D view controls added to DOM');
-    
+
     // Setup event listener for 2D view button (after button is created)
     this.view2DButton.addEventListener("click", (e) => {
-      console.log('[Sidebar] 2D view button click event fired');
       e.preventDefault();
       e.stopPropagation();
       this.toggle2DView();
     });
-    console.log('[Sidebar] 2D view button event listener added');
-    
-    // Add a direct test click handler for debugging
-    setTimeout(() => {
-      const button = document.querySelector('.view-2d-button');
-      console.log('[Sidebar] Button found in DOM:', button);
-      console.log('[Sidebar] Button disabled:', button?.disabled);
-      console.log('[Sidebar] Button style:', button?.style.cssText);
-      console.log('[Sidebar] Button computed style display:', button ? window.getComputedStyle(button).display : 'N/A');
-      
-      if (button) {
-        // Add a test click listener to see if ANY click events work
-        button.addEventListener('click', function(e) {
-          console.log('[Sidebar] TEST: Direct button click detected!');
-        });
-      }
-    }, 100);
   }
 
   setupEventListeners() {
@@ -818,14 +781,17 @@ export class Sidebar {
 
   setupViewModeListener() {
     // Listen for view mode changes from ViewManager2D
-    document.addEventListener('viewModeChanged', (e) => {
+    document.addEventListener("viewModeChanged", (e) => {
       this.onViewModeChanged(e.detail.is2DMode);
     });
 
     // Listen for level selection changes to update 2D view
-    document.addEventListener('levelSelectionChanged', (e) => {
+    document.addEventListener("levelSelectionChanged", (e) => {
       if (this.viewManager2D.isIn2DMode()) {
-        this.viewManager2D.update2DViewForLevel(e.detail.levelId, e.detail.kickMode);
+        this.viewManager2D.update2DViewForLevel(
+          e.detail.levelId,
+          e.detail.kickMode
+        );
       }
     });
   }
@@ -834,7 +800,7 @@ export class Sidebar {
     if (!this.view2DButton) return;
 
     if (is2DMode) {
-      this.view2DButton.classList.add('active');
+      this.view2DButton.classList.add("active");
       this.view2DButton.innerHTML = `
         <span class="view-button-icon">🗺️</span>
         <span class="view-button-text">3D View</span>
@@ -842,50 +808,49 @@ export class Sidebar {
       this.view2DButton.title = "Switch to 3D view";
       this.updateStatusIndicator("2D top view active");
     } else {
-      this.view2DButton.classList.remove('active');
+      this.view2DButton.classList.remove("active");
       this.view2DButton.innerHTML = `
         <span class="view-button-icon">📐</span>
         <span class="view-button-text">2D Top View</span>
       `;
       this.view2DButton.title = "Switch to 2D top-down view";
-      this.updateStatusIndicator(this.currentBuilding ? "3D view active" : "Select a building to enable 2D view");
+      this.updateStatusIndicator(
+        this.currentBuilding
+          ? "3D view active"
+          : "Select a building to enable 2D view"
+      );
     }
   }
 
   updateStatusIndicator(message) {
-    const statusIndicator = this.viewControls?.querySelector('.view-status-indicator');
+    const statusIndicator = this.viewControls?.querySelector(
+      ".view-status-indicator"
+    );
     if (statusIndicator) {
       statusIndicator.textContent = message;
     }
   }
 
   toggle2DView() {
-    console.log('[Sidebar] 2D view button clicked');
-    console.log('[Sidebar] Current building:', this.currentBuilding);
-    console.log('[Sidebar] Current venue ID:', this.currentVenueId);
-    
+    console.log("[Sidebar] 2D view button clicked");
+
     if (!this.currentBuilding || !this.currentVenueId) {
-      console.warn('[Sidebar] No building selected for 2D view - BUT BUTTON CLICK WORKS!');
-      alert('Button click works! Please load a building first.');
+      console.warn("[Sidebar] No building selected for 2D view");
       return;
     }
 
-    console.log('[Sidebar] Toggling 2D mode...');
+    console.log("[Sidebar] Toggling 2D mode...");
     this.viewManager2D.toggleMode(this.currentBuilding, this.currentVenueId);
   }
 
   // Method to be called when a building is loaded/selected
   setBuildingContext(buildingIndoor, venueId) {
-    console.log('[Sidebar] setBuildingContext called with:', { buildingIndoor, venueId });
     this.currentBuilding = buildingIndoor;
     this.currentVenueId = venueId;
 
     if (this.view2DButton) {
       this.view2DButton.disabled = false;
       this.updateStatusIndicator("Building loaded - 2D view available");
-      console.log('[Sidebar] 2D view button enabled');
-    } else {
-      console.warn('[Sidebar] 2D view button not found!');
     }
 
     console.log(`[Sidebar] Building context set for venue: ${venueId}`);
@@ -903,7 +868,7 @@ export class Sidebar {
 
     if (this.view2DButton) {
       this.view2DButton.disabled = true;
-      this.view2DButton.classList.remove('active');
+      this.view2DButton.classList.remove("active");
       this.updateStatusIndicator("Select a building to enable 2D view");
     }
   }

@@ -15,13 +15,13 @@ export const indoorStyles = {
   unit: {
     // Educational and meeting spaces
     restricted: {
-      stroke: new Cesium.Color(0.5, 0.5, 0.5, 1), // Medium grey for stroke
-      fill: new Cesium.Color(0.3, 0.3, 0.3, 1), // Darker grey for fill
+      stroke: new Cesium.Color(0.7, 0.7, 0.7, 1),
+      fill: new Cesium.Color(0.61, 0.61, 0.61, 1),
       outline: false,
     },
     auditorium: {
-      stroke: new Cesium.Color(0.7, 0.7, 0.7, 1),
-      fill: new Cesium.Color(0.51, 0.51, 0.51, 1),
+      stroke: new Cesium.Color(0.902, 0.824, 0.725, 1),
+      fill: new Cesium.Color(0.902, 0.824, 0.725, 1),
       outline: false,
     },
     classroom: {
@@ -129,8 +129,8 @@ export const indoorStyles = {
       outline: false,
     },
     storage: {
-      stroke: new Cesium.Color(0.7, 0.7, 0.7, 1),
-      fill: new Cesium.Color(0.51, 0.51, 0.51, 1),
+      stroke: new Cesium.Color(0.902, 0.824, 0.725, 1),
+      fill: new Cesium.Color(0.902, 0.824, 0.725, 1),
       outline: false,
     },
 
@@ -197,8 +197,8 @@ export const indoorStyles = {
       outline: false,
     },
     terrace: {
-      stroke: new Cesium.Color(0.7, 0.7, 0.7, 1),
-      fill: new Cesium.Color(0.51, 0.51, 0.51, 1),
+      stroke: new Cesium.Color(0.635, 0.608, 0.996, 1),
+      fill: new Cesium.Color(0.635, 0.608, 0.996, 1),
       outline: false,
     },
     unenclosedarea: {
@@ -214,13 +214,13 @@ export const indoorStyles = {
 
     // Default and unspecified
     unspecified: {
-      stroke: new Cesium.Color(0.7, 0.7, 0.7, 1),
+      stroke: new Cesium.Color(0.902, 0.824, 0.72, 1),
       fill: new Cesium.Color(1, 1, 1, 1),
       outline: false,
     },
     default: {
-      stroke: new Cesium.Color(0.7, 0.7, 0.7, 1),
-      fill: new Cesium.Color(0.5, 0.5, 0.5, 1),
+      stroke: new Cesium.Color(0.902, 0.824, 0.725, 1),
+      fill: new Cesium.Color(0.902, 0.824, 0.725, 1),
       outline: false,
     },
   },

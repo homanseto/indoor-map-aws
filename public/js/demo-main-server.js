@@ -4,23 +4,27 @@ import { IndoorNetwork } from "./modules/indoor-network.js";
 import { ZClippingManager } from "./utils/zClippingManager.js";
 import { initSidebar } from "./ui/sidebar.js";
 
-// Global variables for demo management
+// Centralized State Management
+import { appState } from "./shared/AppState.js";
+import {
+  StateActions,
+  StateValidators,
+  StateDev,
+} from "./shared/AppStateHooks.js";
+
+// Legacy global variables (keep for backward compatibility)
 let viewer;
 let threeDTiles, PNTiles, indoorMTRTiles, indoorNetworkTiles, hikingTiles;
 
+// Deprecated - now managed by AppState, but keeping references for transition
 let activeMTRStations = new Map(); // Map<venueId, MTRIndoor>
-let hiddenVenuePolygons = new Set(); // Track hidden venue polygons
-let hiddenMTRPolygons = new Set(); // Track hidden MTR polygons
 
-// Map to manage active buildings (venueId -> BuildingIndoor)
-let activeBuildings = new Map();
-let activeNetworks = new Map();
-
-// Coordination flag to prevent timing conflicts between event handlers
-let isProcessingClick = false;
-
-// Global variable to store venue data for search functionality
-let globalVenueGeoJson = null;
+// Helper functions to bridge legacy code with new state management
+const getActiveBuildings = () => appState.getAllActiveBuildings();
+const getActiveNetworks = () => appState.getAllActiveNetworks();
+const getGlobalVenueGeoJson = () => appState.getVenueGeoJson();
+const isProcessingClick = () => appState.isClickProcessing();
+const getLastActiveVenueId = () => appState.getLastActiveVenueId();
 
 // Generic handler for selecting any indoor feature (unit, window, opening, amenity, occupant)
 function handleIndoorFeatureClick(selectedEntity) {
@@ -35,33 +39,34 @@ function handleIndoorFeatureClick(selectedEntity) {
       ? selectedEntity.properties.venue_id.getValue()
       : selectedEntity.properties.venue_id;
   }
+
+  // Use state management for checks
   if (
     !venueId ||
-    !activeBuildings.has(venueId) ||
-    (activeNetworks.size > 0 && !activeNetworks.has(venueId))
+    !appState.isBuildingActive(venueId) ||
+    (appState.getAllActiveNetworks().size > 0 &&
+      !appState.getActiveNetwork(venueId))
   )
     return;
 
   // If already the active building, do nothing
-  if (lastActiveVenueId === venueId) return;
+  const currentActive = appState.getLastActiveVenueId();
+  if (currentActive === venueId) return;
 
-  // Reset previous building's level bar and filtering to ALL
-  if (lastActiveVenueId && activeBuildings.has(lastActiveVenueId)) {
-    const prevBuilding = activeBuildings.get(lastActiveVenueId);
-    if (typeof prevBuilding.resetLevelBarAndShowAll === "function") {
-      prevBuilding.resetLevelBarAndShowAll();
-    }
+  // Deactivate previous building
+  if (currentActive) {
+    StateActions.deactivateBuilding(currentActive);
   }
 
   // Update the level bar for the selected building
-  const buildingIndoor = activeBuildings.get(venueId);
+  const buildingIndoor = appState.getActiveBuilding(venueId);
   if (typeof buildingIndoor.initLevelBar === "function") {
     buildingIndoor.initLevelBar();
   }
 
   // Reset network visibility to shown and update toggle button
-  if (activeNetworks.has(venueId)) {
-    const network = activeNetworks.get(venueId);
+  const network = appState.getActiveNetwork(venueId);
+  if (network) {
     if (typeof network.showNetwork === "function") {
       network.showNetwork(); // Auto-reset to visible
     }
@@ -70,13 +75,13 @@ function handleIndoorFeatureClick(selectedEntity) {
     }
   }
 
-  lastActiveVenueId = venueId;
+  // Set as new active venue
+  appState.setLastActiveVenueId(venueId);
 }
-let lastActiveVenueId = null; // Track last active building for level bar reset
 
-// Building Network Management
-let activeBuildingNetworks = new Map(); // Map<venueId, {dataSource, data, loading}>
-let buildingNetworkCache = new Map(); // Map<buildingName, networkData>
+// // Building Network Management
+// let activeBuildingNetworks = new Map(); // Map<venueId, {dataSource, data, loading}>
+// let buildingNetworkCache = new Map(); // Map<buildingName, networkData>
 
 // Configurable API base URL for backend
 // Use http://localhost:3002 for local debug, "" for production/Docker
@@ -99,6 +104,9 @@ async function initDemo() {
   } else {
     console.log("[demo-main-server] Reusing existing Cesium viewer.");
   }
+
+  // Initialize centralized state with viewer
+  StateActions.initializeApp(viewer);
   const venueResponseFromServer = await fetch(
     `${API_BASE_URL}/api/smo3dm/venues`,
     {
@@ -108,26 +116,20 @@ async function initDemo() {
   const venueGeoJson = await venueResponseFromServer.json();
   console.log("Fetched venue polygons:", venueGeoJson);
 
-  // Store venue data globally for search functionality
-  globalVenueGeoJson = venueGeoJson;
+  // Store venue data in centralized state
+  appState.setVenueGeoJson(venueGeoJson);
 
   await setupVenueDataSources(venueGeoJson);
 
   // Initialize search box
   initBuildingSearchBox();
 
-  // Initialize sidebar and store global reference
-  console.log('[Demo] Initializing sidebar...');
-  window.mapSidebar = initSidebar(viewer);
-  console.log('[Demo] Sidebar initialized:', window.mapSidebar);
-  
-  // Debug: Show sidebar for testing (force visibility)
-  setTimeout(() => {
-    if (window.mapSidebar) {
-      console.log('[Demo] Forcing sidebar visible for testing...');
-      window.mapSidebar.show();
-    }
-  }, 1000);
+  // Initialize sidebar and store in centralized state
+  console.log("[Demo] Initializing sidebar...");
+  const sidebar = initSidebar(viewer);
+  appState.setMapSidebar(sidebar);
+  window.mapSidebar = sidebar; // Keep for backward compatibility
+  console.log("[Demo] Sidebar initialized and stored in state");
 
   // Inject Z-clipping bar HTML
   const zClippingBarContainer = document.getElementById(
@@ -149,12 +151,8 @@ async function initDemo() {
   if (slider && valueLabel) {
     slider.addEventListener("input", (e) => {
       valueLabel.textContent = slider.value;
-      // Apply Z-clipping to all loaded buildings
-      ZClippingManager.applyToAllBuildings(
-        activeBuildings,
-        activeNetworks,
-        parseFloat(slider.value)
-      );
+      // Apply Z-clipping using state management
+      StateActions.applyZClipping(parseFloat(slider.value));
     });
   }
 }
@@ -184,8 +182,8 @@ async function setupVenueDataSources(venueGeoJson) {
 function setupWallSelectionOverride() {
   // Override Cesium's default selection behavior to show info for underlying features when clicking walls
   viewer.cesiumWidget.screenSpaceEventHandler.setInputAction(function (event) {
-    // Prevent processing if already being handled
-    if (isProcessingClick) return;
+    // Prevent processing if already being handled using state management
+    if (appState.isClickProcessing()) return;
 
     const pickedFeatures = viewer.scene.drillPick(event.position);
 
@@ -230,14 +228,14 @@ function setupVenueClickInteraction() {
   const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
   handler.setInputAction(async (movement) => {
     try {
-      // Set processing flag to coordinate with override handler
-      isProcessingClick = true;
+      // Set processing flag using state management
+      appState.setProcessingClick(true);
 
       const picked = viewer.scene.pick(movement.position);
       const pickedFeatures = viewer.scene.drillPick(movement.position);
       if (pickedFeatures.length === 0) {
-        // Clear selections for all buildings when clicking empty space
-        activeBuildings.forEach((building) => {
+        // Clear selections for all buildings when clicking empty space using state management
+        appState.getAllActiveBuildings().forEach((building) => {
           if (typeof building.clearSelection === "function") {
             building.clearSelection();
           }
@@ -270,28 +268,21 @@ function setupVenueClickInteraction() {
             if (featureType === "venue") {
               // Get venue_id from properties
               if (!venueId) return;
-              if (activeBuildings.has(venueId)) {
+              if (appState.isBuildingActive(venueId)) {
                 // If already loaded, update the level bar and filtering to this building
-                if (
-                  lastActiveVenueId &&
-                  activeBuildings.has(lastActiveVenueId) &&
-                  lastActiveVenueId !== venueId
-                ) {
-                  const prevBuilding = activeBuildings.get(lastActiveVenueId);
-                  if (
-                    typeof prevBuilding.resetLevelBarAndShowAll === "function"
-                  ) {
-                    prevBuilding.resetLevelBarAndShowAll();
-                  }
+                const currentActive = appState.getLastActiveVenueId();
+                if (currentActive && currentActive !== venueId) {
+                  StateActions.deactivateBuilding(currentActive);
                 }
-                const buildingIndoor = activeBuildings.get(venueId);
+
+                const buildingIndoor = appState.getActiveBuilding(venueId);
                 if (typeof buildingIndoor.initLevelBar === "function") {
                   buildingIndoor.initLevelBar();
                 }
 
                 // Reset network visibility to shown and update toggle button
-                if (activeNetworks.has(venueId)) {
-                  const network = activeNetworks.get(venueId);
+                const network = appState.getActiveNetwork(venueId);
+                if (network) {
                   if (typeof network.showNetwork === "function") {
                     network.showNetwork(); // Auto-reset to visible
                   }
@@ -300,17 +291,13 @@ function setupVenueClickInteraction() {
                   }
                 }
 
-                lastActiveVenueId = venueId;
+                appState.setLastActiveVenueId(venueId);
                 return;
               }
               // Reset previous building's level bar and filtering to ALL
-              if (lastActiveVenueId && activeBuildings.has(lastActiveVenueId)) {
-                const prevBuilding = activeBuildings.get(lastActiveVenueId);
-                if (
-                  typeof prevBuilding.resetLevelBarAndShowAll === "function"
-                ) {
-                  prevBuilding.resetLevelBarAndShowAll();
-                }
+              const currentActive = appState.getLastActiveVenueId();
+              if (currentActive) {
+                StateActions.deactivateBuilding(currentActive);
               }
               try {
                 const buildingResponse = await fetch(
@@ -332,7 +319,7 @@ function setupVenueClickInteraction() {
                 if (networkResponse.ok) {
                   const networkData = await networkResponse.json();
                   const indoorNetwork = new IndoorNetwork(viewer, networkData);
-                  activeNetworks.set(venueId, indoorNetwork);
+                  appState.setActiveNetwork(venueId, indoorNetwork);
                   console.log(networkData);
                   if (typeof indoorNetwork.show === "function") {
                     indoorNetwork.show();
@@ -350,14 +337,19 @@ function setupVenueClickInteraction() {
                 }
                 if (buildingResponse.ok) {
                   const buildingData = await buildingResponse.json();
-                  // Instantiate BuildingIndoor and add to activeBuildings
+                  // Instantiate BuildingIndoor and use state management
                   const buildingIndoor = new BuildingIndoor(
                     viewer,
                     buildingData
                   );
-                  activeBuildings.set(venueId, buildingIndoor);
+
+                  // Use StateActions for proper loading
+                  const network = appState.getActiveNetwork(venueId);
+                  StateActions.loadBuilding(venueId, buildingIndoor, network);
+
                   // Hide the venue entity
                   pf.id.show = false;
+
                   // Show the building and initialize the level bar
                   if (typeof buildingIndoor.show === "function") {
                     buildingIndoor.show();
@@ -365,18 +357,28 @@ function setupVenueClickInteraction() {
                   if (typeof buildingIndoor.initLevelBar === "function") {
                     buildingIndoor.initLevelBar();
                   }
-                  
-                  // Set building context for sidebar 2D view
-                  console.log('[Demo] Setting building context - sidebar:', window.mapSidebar);
-                  if (window.mapSidebar && typeof window.mapSidebar.setBuildingContext === "function") {
-                    console.log('[Demo] Calling setBuildingContext for venue:', venueId);
-                    window.mapSidebar.setBuildingContext(buildingIndoor, venueId);
+
+                  // Set building context for sidebar 2D view using state management
+                  const sidebar = appState.getMapSidebar();
+                  console.log(
+                    "[Demo] Setting building context - sidebar:",
+                    sidebar
+                  );
+                  if (
+                    sidebar &&
+                    typeof sidebar.setBuildingContext === "function"
+                  ) {
+                    console.log(
+                      "[Demo] Calling setBuildingContext for venue:",
+                      venueId
+                    );
+                    sidebar.setBuildingContext(buildingIndoor, venueId);
                   } else {
-                    console.warn('[Demo] mapSidebar not available or setBuildingContext not a function');
+                    console.warn(
+                      "[Demo] Sidebar not available or setBuildingContext not a function"
+                    );
                   }
-                  
-                  // Set this as the last active building
-                  lastActiveVenueId = venueId;
+
                   console.log("Building data for venue", venueId, buildingData);
                 } else {
                   console.error(
@@ -394,7 +396,7 @@ function setupVenueClickInteraction() {
               // For any non-venue feature, update the level bar and context, and highlight the feature
               handleIndoorFeatureClick(pf.id);
 
-              // Highlight the selected feature
+              // Highlight the selected feature using state management
               const entityVenueId =
                 pf.id.properties && pf.id.properties.venue_id
                   ? pf.id.properties.venue_id.getValue
@@ -402,8 +404,8 @@ function setupVenueClickInteraction() {
                     : pf.id.properties.venue_id
                   : null;
 
-              if (entityVenueId && activeBuildings.has(entityVenueId)) {
-                const building = activeBuildings.get(entityVenueId);
+              if (entityVenueId && appState.isBuildingActive(entityVenueId)) {
+                const building = appState.getActiveBuilding(entityVenueId);
                 if (typeof building.highlightFeature === "function") {
                   building.highlightFeature(pf.id);
                 }
@@ -416,8 +418,8 @@ function setupVenueClickInteraction() {
     } catch (error) {
       console.log("Error handling click interaction:", error);
     } finally {
-      // Always reset processing flag
-      isProcessingClick = false;
+      // Always reset processing flag using state management
+      appState.setProcessingClick(false);
     }
   }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 }
@@ -457,9 +459,10 @@ function initBuildingSearchBox() {
 function setupSearchEventListeners(searchInput, dropdownContainer) {
   let allBuildings = [];
 
-  // Extract building data from venue GeoJSON
-  if (globalVenueGeoJson && globalVenueGeoJson.features) {
-    allBuildings = globalVenueGeoJson.features
+  // Extract building data from venue GeoJSON using state management
+  const venueGeoJson = appState.getVenueGeoJson();
+  if (venueGeoJson && venueGeoJson.features) {
+    allBuildings = venueGeoJson.features
       .filter(
         (feature) => feature.properties && feature.properties.buildingName
       )
@@ -552,41 +555,33 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
     // Hide dropdown and clear input
     dropdownContainer.style.display = "none";
 
-    // Find the selected building name and set it in input
-    const selectedBuilding = globalVenueGeoJson.features.find(
-      (f) => f.id === venueId
-    );
+    // Find the selected building name and set it in input using state management
+    const selectedBuilding = appState.findVenueById(venueId);
     if (selectedBuilding) {
       searchInput.value = selectedBuilding.properties.buildingName;
     }
 
     console.log(`Selected building: ${venueId}`);
 
-    // Check if building is already loaded (Smart Loading - Option B)
-    if (activeBuildings.has(venueId)) {
+    // Check if building is already loaded using state management
+    if (appState.isBuildingActive(venueId)) {
       console.log("Building already loaded, resetting view...");
 
-      // Reset previous building's level bar if switching to a different building
-      if (
-        lastActiveVenueId &&
-        activeBuildings.has(lastActiveVenueId) &&
-        lastActiveVenueId !== venueId
-      ) {
-        const prevBuilding = activeBuildings.get(lastActiveVenueId);
-        if (typeof prevBuilding.resetLevelBarAndShowAll === "function") {
-          prevBuilding.resetLevelBarAndShowAll();
-        }
+      // Reset previous building using state management
+      const currentActive = appState.getLastActiveVenueId();
+      if (currentActive && currentActive !== venueId) {
+        StateActions.deactivateBuilding(currentActive);
       }
 
       // Reset to ALL levels and re-center view
-      const building = activeBuildings.get(venueId);
+      const building = appState.getActiveBuilding(venueId);
       if (typeof building.resetLevelBarAndShowAll === "function") {
         building.resetLevelBarAndShowAll();
       }
 
       // Reset network visibility
-      if (activeNetworks.has(venueId)) {
-        const network = activeNetworks.get(venueId);
+      const network = appState.getActiveNetwork(venueId);
+      if (network) {
         if (typeof network.showNetwork === "function") {
           network.showNetwork();
         }
@@ -647,16 +642,14 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
         }
       }
 
-      lastActiveVenueId = venueId;
+      appState.setLastActiveVenueId(venueId);
       return;
     }
 
-    // Reset previous building's level bar to ALL
-    if (lastActiveVenueId && activeBuildings.has(lastActiveVenueId)) {
-      const prevBuilding = activeBuildings.get(lastActiveVenueId);
-      if (typeof prevBuilding.resetLevelBarAndShowAll === "function") {
-        prevBuilding.resetLevelBarAndShowAll();
-      }
+    // Reset previous building using state management
+    const currentActive = appState.getLastActiveVenueId();
+    if (currentActive) {
+      StateActions.deactivateBuilding(currentActive);
     }
 
     // Load building data (similar to venue click behavior)
@@ -679,10 +672,10 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
     );
 
     // Load network data if available
+    let indoorNetwork = null;
     if (networkResponse.ok) {
       const networkData = await networkResponse.json();
-      const indoorNetwork = new IndoorNetwork(viewer, networkData);
-      activeNetworks.set(venueId, indoorNetwork);
+      indoorNetwork = new IndoorNetwork(viewer, networkData);
 
       if (typeof indoorNetwork.show === "function") {
         indoorNetwork.show();
@@ -696,15 +689,26 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
     if (buildingResponse.ok) {
       const buildingData = await buildingResponse.json();
       const buildingIndoor = new BuildingIndoor(viewer, buildingData);
-      activeBuildings.set(venueId, buildingIndoor);
 
-      // Set building context for sidebar 2D view
-      console.log('[Demo] Setting building context (search) - sidebar:', window.mapSidebar);
-      if (window.mapSidebar && typeof window.mapSidebar.setBuildingContext === "function") {
-        console.log('[Demo] Calling setBuildingContext (search) for venue:', venueId);
-        window.mapSidebar.setBuildingContext(buildingIndoor, venueId);
+      // Use StateActions for proper loading with state management
+      StateActions.loadBuilding(venueId, buildingIndoor, indoorNetwork);
+
+      // Set building context for sidebar 2D view using state management
+      const sidebar = appState.getMapSidebar();
+      console.log(
+        "[Demo] Setting building context (search) - sidebar:",
+        sidebar
+      );
+      if (sidebar && typeof sidebar.setBuildingContext === "function") {
+        console.log(
+          "[Demo] Calling setBuildingContext (search) for venue:",
+          venueId
+        );
+        sidebar.setBuildingContext(buildingIndoor, venueId);
       } else {
-        console.warn('[Demo] mapSidebar not available or setBuildingContext not a function (search)');
+        console.warn(
+          "[Demo] Sidebar not available or setBuildingContext not a function (search)"
+        );
       }
 
       // Find the venue entity first and fly to it before hiding
@@ -754,7 +758,6 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
         }
       }
 
-      lastActiveVenueId = venueId;
       console.log(
         `Building loaded and displayed: ${selectedBuilding.properties.buildingName}`
       );
@@ -777,15 +780,26 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
     // Initialize the demo
     await initDemo();
 
-    // Set up global references
+    // Set up global references (maintained for backward compatibility)
     window.viewer = viewer;
     viewer.scene.debugShowFramesPerSecond = true;
 
-    // Export Z-clipping manager
+    // Export state management for debugging
+    window.appState = appState;
+    window.StateActions = StateActions;
+    window.StateValidators = StateValidators;
+    window.StateDev = StateDev;
+
+    // Export Z-clipping manager (legacy)
     window.ZClippingManager = ZClippingManager;
 
-    // Export 3D Tiles clipping manager
-    // window.TilesClippingManager = TilesClippingManager;
+    // Development tools
+    if (process?.env?.NODE_ENV === "development") {
+      StateDev.logState();
+      console.log(
+        "[Demo] Development tools available: StateDev.monitorStateChanges()"
+      );
+    }
 
     console.log("3D Indoor Map Viewer Demo loaded successfully");
     console.log(

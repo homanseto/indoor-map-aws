@@ -9,18 +9,21 @@ export class ViewManager2D {
     this.currentBuilding = null;
     this.savedCameraState = null;
     this.activeBuildingBounds = null;
-    
+
     // Camera constraint settings for 2D mode
     this.constraints = {
-      minimumZoom: 50,     // Minimum distance from ground
-      maximumZoom: 500,    // Maximum distance from ground
-      tiltRange: {         // Limit tilt to near-vertical for top-down view
+      // No zoom limits - complete freedom as requested
+      minimumZoom: 0.1, // Very close zoom allowed
+      maximumZoom: Number.MAX_VALUE, // No maximum limit
+      tiltRange: {
+        // Tolerance range for pitch corrections
         min: Cesium.Math.toRadians(-95),
-        max: Cesium.Math.toRadians(-85)
+        max: Cesium.Math.toRadians(-85),
       },
-      enableRotation: true  // Allow Z-axis rotation
+      enableRotation: true, // Allow free 360° Z-axis rotation
+      rotationSensitivity: 1.0, // Normal rotation sensitivity
     };
-    
+
     // Event handlers for camera controls
     this.cameraEventHandlers = [];
     this.originalCameraSettings = null;
@@ -33,42 +36,42 @@ export class ViewManager2D {
    */
   async enter2DMode(buildingIndoor, venueId) {
     if (this.is2DMode) {
-      console.log('Already in 2D mode');
+      console.log("Already in 2D mode");
       return;
     }
 
     console.log(`Entering 2D mode for venue: ${venueId}`);
-    
+
     // Store current camera state for restoration
     this.saveCameraState();
-    
+
     // Store current building reference
     this.currentBuilding = buildingIndoor;
-    
+
     // Calculate building bounds for optimal 2D view
     const bounds = this.calculateBuildingBounds(buildingIndoor);
     if (!bounds) {
-      console.error('Cannot calculate building bounds for 2D view');
+      console.error("Cannot calculate building bounds for 2D view");
       return;
     }
     this.activeBuildingBounds = bounds;
-    
-    // Hide venue polygon for this building
-    this.hideVenuePolygon(venueId);
-    
+
+    // Note: Venue polygon should already be hidden when building is loaded
+    // Following existing pattern in demo-main-server.js where venue is hidden on building selection
+
     // Transition to 2D camera position
     await this.transitionTo2DCamera(bounds);
-    
+
     // Apply 2D camera constraints
     this.apply2DConstraints();
-    
+
     // Update mode state
     this.is2DMode = true;
-    
+
     // Trigger UI updates
     this.notifyModeChange(true);
-    
-    console.log('Successfully entered 2D mode');
+
+    console.log("Successfully entered 2D mode");
   }
 
   /**
@@ -76,33 +79,34 @@ export class ViewManager2D {
    */
   async exit2DMode() {
     if (!this.is2DMode) {
-      console.log('Not in 2D mode');
+      console.log("Not in 2D mode");
       return;
     }
 
-    console.log('Exiting 2D mode');
-    
+    console.log("Exiting 2D mode");
+
     // Remove camera constraints
     this.remove2DConstraints();
-    
-    // Restore venue polygon visibility
-    if (this.currentBuilding && this.activeBuildingBounds) {
-      this.showVenuePolygon(this.activeBuildingBounds.venueId);
-    }
-    
+
+    // NOTE: Do NOT restore venue polygon visibility
+    // Following the existing pattern where venue remains hidden when building is selected
+    // The venue should stay hidden as per the current activeBuildings behavior
+
     // Return to standard building overview
     await this.returnToStandardView();
-    
+
     // Clear state
     this.is2DMode = false;
     this.currentBuilding = null;
     this.activeBuildingBounds = null;
     this.savedCameraState = null;
-    
+
     // Trigger UI updates
     this.notifyModeChange(false);
-    
-    console.log('Successfully exited 2D mode');
+
+    console.log(
+      "Successfully exited 2D mode - venue remains hidden as expected"
+    );
   }
 
   /**
@@ -111,13 +115,17 @@ export class ViewManager2D {
    * @param {string} venueId - The venue ID
    */
   async toggleMode(buildingIndoor, venueId) {
-    console.log('[ViewManager2D] toggleMode called with:', { buildingIndoor, venueId, is2DMode: this.is2DMode });
-    
+    console.log("[ViewManager2D] toggleMode called with:", {
+      buildingIndoor,
+      venueId,
+      is2DMode: this.is2DMode,
+    });
+
     if (this.is2DMode) {
-      console.log('[ViewManager2D] Currently in 2D mode, switching to 3D');
+      console.log("[ViewManager2D] Currently in 2D mode, switching to 3D");
       await this.exit2DMode();
     } else {
-      console.log('[ViewManager2D] Currently in 3D mode, switching to 2D');
+      console.log("[ViewManager2D] Currently in 3D mode, switching to 2D");
       await this.enter2DMode(buildingIndoor, venueId);
     }
   }
@@ -132,12 +140,22 @@ export class ViewManager2D {
       return;
     }
 
-    // Recalculate optimal height based on level selection
+    // Recalculate optimal height and distance based on level selection
     const levelHeight = this.calculateLevelHeight(levelId, kickMode);
-    const optimalDistance = this.calculateOptimalDistance(this.activeBuildingBounds);
-    
-    // Update camera position to focus on the selected level
-    this.viewer.scene.camera.setView({
+    let optimalDistance;
+
+    if (levelId === "ALL") {
+      // Show entire building from above
+      optimalDistance =
+        this.calculateOptimalDistance(this.activeBuildingBounds) * 1.2;
+    } else {
+      // Show specific level - closer view for level details
+      optimalDistance =
+        this.calculateOptimalDistance(this.activeBuildingBounds) * 0.8;
+    }
+
+    // Smooth transition to new camera position
+    this.viewer.scene.camera.flyTo({
       destination: Cesium.Cartesian3.fromDegrees(
         this.activeBuildingBounds.center.longitude,
         this.activeBuildingBounds.center.latitude,
@@ -146,8 +164,9 @@ export class ViewManager2D {
       orientation: {
         heading: this.viewer.scene.camera.heading, // Preserve current rotation
         pitch: Cesium.Math.toRadians(-90), // Top-down view
-        roll: 0
-      }
+        roll: 0,
+      },
+      duration: 1.0,
     });
   }
 
@@ -157,20 +176,27 @@ export class ViewManager2D {
    * @returns {Object} Bounds object with center, rectangle, and metadata
    */
   calculateBuildingBounds(buildingIndoor) {
-    console.log('[ViewManager2D] calculateBuildingBounds called with:', buildingIndoor);
-    
+    console.log(
+      "[ViewManager2D] calculateBuildingBounds called with:",
+      buildingIndoor
+    );
+
     if (!buildingIndoor.buildingData || !buildingIndoor.buildingData.units) {
-      console.error('[ViewManager2D] No building data or units found');
+      console.error("[ViewManager2D] No building data or units found");
       return null;
     }
 
     const units = buildingIndoor.buildingData.units.features;
     if (units.length === 0) {
-      console.error('[ViewManager2D] No units found in building data');
+      console.error("[ViewManager2D] No units found in building data");
       return null;
     }
-    
-    console.log('[ViewManager2D] Found', units.length, 'units for bounds calculation');
+
+    console.log(
+      "[ViewManager2D] Found",
+      units.length,
+      "units for bounds calculation"
+    );
 
     let minLon = Number.MAX_VALUE;
     let maxLon = Number.MIN_VALUE;
@@ -180,10 +206,10 @@ export class ViewManager2D {
     let maxHeight = Number.MIN_VALUE;
 
     // Calculate bounding box from all units
-    units.forEach(unit => {
+    units.forEach((unit) => {
       if (unit.geometry && unit.geometry.coordinates) {
         const coords = unit.geometry.coordinates[0];
-        coords.forEach(coord => {
+        coords.forEach((coord) => {
           minLon = Math.min(minLon, coord[0]);
           maxLon = Math.max(maxLon, coord[0]);
           minLat = Math.min(minLat, coord[1]);
@@ -194,7 +220,7 @@ export class ViewManager2D {
 
     // Calculate height range from levels
     if (buildingIndoor.buildingData.levels) {
-      buildingIndoor.buildingData.levels.features.forEach(level => {
+      buildingIndoor.buildingData.levels.features.forEach((level) => {
         const zValue = level.properties.zValue;
         minHeight = Math.min(minHeight, zValue);
         maxHeight = Math.max(maxHeight, zValue);
@@ -204,10 +230,15 @@ export class ViewManager2D {
     const center = {
       longitude: (minLon + maxLon) / 2,
       latitude: (minLat + maxLat) / 2,
-      height: (minHeight + maxHeight) / 2
+      height: (minHeight + maxHeight) / 2,
     };
 
-    const rectangle = Cesium.Rectangle.fromDegrees(minLon, minLat, maxLon, maxLat);
+    const rectangle = Cesium.Rectangle.fromDegrees(
+      minLon,
+      minLat,
+      maxLon,
+      maxLat
+    );
 
     return {
       center,
@@ -216,7 +247,7 @@ export class ViewManager2D {
       maxHeight,
       venueId: units[0].properties.venue_id,
       width: maxLon - minLon,
-      height: maxLat - minLat
+      height: maxLat - minLat,
     };
   }
 
@@ -225,24 +256,31 @@ export class ViewManager2D {
    * @param {Object} bounds - Building bounds
    */
   async transitionTo2DCamera(bounds) {
+    // Calculate optimal distance to see entire building level
     const optimalDistance = this.calculateOptimalDistance(bounds);
-    
+
+    // Position camera above the center of the building
     const destination = Cesium.Cartesian3.fromDegrees(
       bounds.center.longitude,
       bounds.center.latitude,
-      bounds.maxHeight + optimalDistance
+      bounds.center.height + optimalDistance
     );
 
     return new Promise((resolve) => {
       this.viewer.scene.camera.flyTo({
         destination: destination,
         orientation: {
-          heading: 0, // North-up orientation
-          pitch: Cesium.Math.toRadians(-90), // Top-down view
-          roll: 0
+          heading: 0, // Start with north-up orientation
+          pitch: Cesium.Math.toRadians(-90), // Perfect top-down view
+          roll: 0,
         },
         duration: 2.0,
-        complete: resolve
+        complete: () => {
+          console.log(
+            "[ViewManager2D] 2D camera transition complete - Z-axis rotation now available"
+          );
+          resolve();
+        },
       });
     });
   }
@@ -258,14 +296,16 @@ export class ViewManager2D {
     const width = Cesium.Rectangle.computeWidth(rectangle);
     const height = Cesium.Rectangle.computeHeight(rectangle);
     const maxDimension = Math.max(width, height);
-    
-    // Use field of view to calculate optimal distance
+
+    // Use field of view to calculate optimal distance with better padding
     const fov = this.viewer.scene.camera.frustum.fov;
-    const distance = (maxDimension / 2) / Math.tan(fov / 2);
-    
-    // Add some padding and ensure it's within reasonable bounds
-    const paddedDistance = distance * 1.2;
-    return Math.max(this.constraints.minimumZoom, Math.min(paddedDistance, this.constraints.maximumZoom));
+    const distance = maxDimension / 2 / Math.tan(fov / 2);
+
+    // Add generous padding for better overview (1.5x instead of 1.2x)
+    const paddedDistance = distance * 1.5;
+
+    // Ensure minimum distance for usability but allow unlimited zoom
+    return Math.max(50, paddedDistance); // Minimum 50m, no maximum
   }
 
   /**
@@ -274,27 +314,60 @@ export class ViewManager2D {
   apply2DConstraints() {
     const scene = this.viewer.scene;
     const camera = scene.camera;
-    
+    const controller = scene.screenSpaceCameraController;
+
     // Store original camera settings
     this.originalCameraSettings = {
-      minimumZoomDistance: scene.screenSpaceCameraController.minimumZoomDistance,
-      maximumZoomDistance: scene.screenSpaceCameraController.maximumZoomDistance,
-      enableTilt: scene.screenSpaceCameraController.enableTilt,
-      enableLook: scene.screenSpaceCameraController.enableLook,
-      constrainedAxis: camera.constrainedAxis
+      minimumZoomDistance: controller.minimumZoomDistance,
+      maximumZoomDistance: controller.maximumZoomDistance,
+      enableTilt: controller.enableTilt,
+      enableLook: controller.enableLook,
+      enableRotate: controller.enableRotate,
+      enableZoom: controller.enableZoom,
+      enableTranslate: controller.enableTranslate,
+      constrainedAxis: camera.constrainedAxis,
+      inertiaSpin: controller.inertiaSpin,
+      inertiaTranslate: controller.inertiaTranslate,
+      inertiaZoom: controller.inertiaZoom,
     };
 
-    // Apply 2D constraints
-    scene.screenSpaceCameraController.minimumZoomDistance = this.constraints.minimumZoom;
-    scene.screenSpaceCameraController.maximumZoomDistance = this.constraints.maximumZoom;
-    scene.screenSpaceCameraController.enableTilt = false; // Disable tilt
-    scene.screenSpaceCameraController.enableLook = false; // Disable look
-    
-    // Constrain camera to Z-axis rotation only
+    // Apply 2D constraints - enable all interactions but constrain orientation
+    controller.minimumZoomDistance = this.constraints.minimumZoom;
+    controller.maximumZoomDistance = this.constraints.maximumZoom;
+    controller.enableTilt = false; // Disable tilt to maintain top-down view
+    controller.enableLook = false; // Disable look to maintain top-down view
+    controller.enableRotate = true; // Enable rotation for Z-axis spinning
+    controller.enableZoom = true; // Enable zoom with no limits
+    controller.enableTranslate = true; // Enable panning/dragging
+
+    // Enable inertia for smooth interactions
+    controller.inertiaSpin = 0.9;
+    controller.inertiaTranslate = 0.9;
+    controller.inertiaZoom = 0.8;
+
+    // Configure camera for Z-axis rotation only
     camera.constrainedAxis = Cesium.Cartesian3.UNIT_Z;
-    
-    // Add event handler to maintain top-down orientation
+
+    // Ensure proper mouse button mapping for rotation
+    controller.rotateEventTypes = Cesium.CameraEventType.LEFT_DRAG;
+    controller.translateEventTypes = [
+      Cesium.CameraEventType.RIGHT_DRAG,
+      Cesium.CameraEventType.MIDDLE_DRAG,
+    ];
+    controller.zoomEventTypes = [
+      Cesium.CameraEventType.WHEEL,
+      Cesium.CameraEventType.PINCH,
+    ];
+
+    // Add event handler to maintain top-down orientation while allowing Z-rotation
     this.maintain2DOrientation();
+
+    console.log(
+      "[ViewManager2D] 2D constraints applied - free Z-rotation and zoom enabled"
+    );
+    console.log(
+      "[ViewManager2D] Try mouse drag to rotate around Z-axis, or use: window.mapSidebar.viewManager2D.testZRotation(45)"
+    );
   }
 
   /**
@@ -305,36 +378,58 @@ export class ViewManager2D {
 
     const scene = this.viewer.scene;
     const camera = scene.camera;
-    
+    const controller = scene.screenSpaceCameraController;
+
     // Restore original settings
-    scene.screenSpaceCameraController.minimumZoomDistance = this.originalCameraSettings.minimumZoomDistance;
-    scene.screenSpaceCameraController.maximumZoomDistance = this.originalCameraSettings.maximumZoomDistance;
-    scene.screenSpaceCameraController.enableTilt = this.originalCameraSettings.enableTilt;
-    scene.screenSpaceCameraController.enableLook = this.originalCameraSettings.enableLook;
+    controller.minimumZoomDistance =
+      this.originalCameraSettings.minimumZoomDistance;
+    controller.maximumZoomDistance =
+      this.originalCameraSettings.maximumZoomDistance;
+    controller.enableTilt = this.originalCameraSettings.enableTilt;
+    controller.enableLook = this.originalCameraSettings.enableLook;
+    controller.enableRotate = this.originalCameraSettings.enableRotate;
+    controller.enableZoom = this.originalCameraSettings.enableZoom;
+    controller.enableTranslate = this.originalCameraSettings.enableTranslate;
+    controller.inertiaSpin = this.originalCameraSettings.inertiaSpin;
+    controller.inertiaTranslate = this.originalCameraSettings.inertiaTranslate;
+    controller.inertiaZoom = this.originalCameraSettings.inertiaZoom;
     camera.constrainedAxis = this.originalCameraSettings.constrainedAxis;
-    
+
     // Remove event handlers
     this.remove2DEventHandlers();
-    
+
     this.originalCameraSettings = null;
+
+    console.log(
+      "[ViewManager2D] 2D constraints removed - full 3D camera control restored"
+    );
   }
 
   /**
-   * Maintain 2D orientation by constraining pitch
+   * Maintain 2D orientation by constraining pitch while allowing heading rotation
    */
   maintain2DOrientation() {
     const handler = () => {
       const camera = this.viewer.scene.camera;
       const pitch = camera.pitch;
-      
-      // Keep pitch within top-down range
-      if (pitch < this.constraints.tiltRange.min || pitch > this.constraints.tiltRange.max) {
+
+      // Only correct pitch if it deviates significantly from top-down view
+      // Allow small variations to prevent jittery corrections
+      const targetPitch = Cesium.Math.toRadians(-90);
+      const tolerance = Cesium.Math.toRadians(5); // 5 degree tolerance
+
+      if (Math.abs(pitch - targetPitch) > tolerance) {
+        // Only correct the pitch, preserve heading (Z-rotation) and position
+        const currentPosition = camera.position.clone();
+        const currentHeading = camera.heading; // Preserve user's rotation
+
         camera.setView({
+          destination: currentPosition,
           orientation: {
-            heading: camera.heading,
-            pitch: Cesium.Math.toRadians(-90),
-            roll: camera.roll
-          }
+            heading: currentHeading, // Keep current Z-axis rotation
+            pitch: targetPitch, // Reset to top-down
+            roll: 0, // Always reset roll
+          },
         });
       }
     };
@@ -347,7 +442,7 @@ export class ViewManager2D {
    * Remove 2D event handlers
    */
   remove2DEventHandlers() {
-    this.cameraEventHandlers.forEach(handler => {
+    this.cameraEventHandlers.forEach((handler) => {
       this.viewer.scene.camera.changed.removeEventListener(handler);
     });
     this.cameraEventHandlers = [];
@@ -362,33 +457,45 @@ export class ViewManager2D {
       position: camera.position.clone(),
       direction: camera.direction.clone(),
       up: camera.up.clone(),
-      right: camera.right.clone()
+      right: camera.right.clone(),
     };
   }
 
   /**
-   * Return to standard building overview
+   * Return to standard building overview (3D view of entire building)
    */
   async returnToStandardView() {
     if (!this.activeBuildingBounds) return;
 
     const bounds = this.activeBuildingBounds;
-    const standardDistance = this.calculateOptimalDistance(bounds) * 1.5;
-    
+
+    // Calculate distance to see entire building in 3D perspective
+    const baseDistance = this.calculateOptimalDistance(bounds);
+    const standardDistance = baseDistance * 2.0; // Further back for full building view
+
+    // Position camera to show entire building including all levels
+    const cameraHeight =
+      bounds.minHeight + (bounds.maxHeight - bounds.minHeight) / 2;
+
     return new Promise((resolve) => {
       this.viewer.scene.camera.flyTo({
         destination: Cesium.Cartesian3.fromDegrees(
           bounds.center.longitude,
           bounds.center.latitude,
-          bounds.center.height + standardDistance
+          cameraHeight + standardDistance
         ),
         orientation: {
-          heading: Cesium.Math.toRadians(0),
-          pitch: Cesium.Math.toRadians(-45), // 45-degree angle for overview
-          roll: 0
+          heading: 0, // North-up
+          pitch: Cesium.Math.toRadians(-35), // Better angle to see building structure
+          roll: 0,
         },
         duration: 1.5,
-        complete: resolve
+        complete: () => {
+          console.log(
+            "[ViewManager2D] Returned to 3D view - entire building visible"
+          );
+          resolve();
+        },
       });
     });
   }
@@ -405,12 +512,12 @@ export class ViewManager2D {
     }
 
     const levels = this.currentBuilding.buildingData.levels.features;
-    
-    if (levelId === 'ALL') {
+
+    if (levelId === "ALL") {
       return this.activeBuildingBounds.center.height;
     }
 
-    const selectedLevel = levels.find(level => level.id === levelId);
+    const selectedLevel = levels.find((level) => level.id === levelId);
     if (!selectedLevel) {
       return this.activeBuildingBounds.center.height;
     }
@@ -424,10 +531,10 @@ export class ViewManager2D {
    */
   hideVenuePolygon(venueId) {
     const venueDataSources = this.viewer.dataSources._dataSources.filter(
-      ds => ds.name === 'venue_polygon'
+      (ds) => ds.name === "venue_polygon"
     );
 
-    venueDataSources.forEach(dataSource => {
+    venueDataSources.forEach((dataSource) => {
       const venueEntity = dataSource.entities.getById(venueId);
       if (venueEntity) {
         venueEntity.show = false;
@@ -442,10 +549,10 @@ export class ViewManager2D {
    */
   showVenuePolygon(venueId) {
     const venueDataSources = this.viewer.dataSources._dataSources.filter(
-      ds => ds.name === 'venue_polygon'
+      (ds) => ds.name === "venue_polygon"
     );
 
-    venueDataSources.forEach(dataSource => {
+    venueDataSources.forEach((dataSource) => {
       const venueEntity = dataSource.entities.getById(venueId);
       if (venueEntity) {
         venueEntity.show = true;
@@ -460,8 +567,8 @@ export class ViewManager2D {
    */
   notifyModeChange(is2D) {
     // Dispatch custom event for UI components to listen
-    const event = new CustomEvent('viewModeChanged', {
-      detail: { is2DMode: is2D, viewManager: this }
+    const event = new CustomEvent("viewModeChanged", {
+      detail: { is2DMode: is2D, viewManager: this },
     });
     document.dispatchEvent(event);
   }
@@ -483,13 +590,41 @@ export class ViewManager2D {
   }
 
   /**
+   * Test Z-axis rotation functionality
+   * @param {number} degrees - Degrees to rotate (for testing)
+   */
+  testZRotation(degrees = 45) {
+    if (!this.is2DMode) {
+      console.log("[ViewManager2D] Not in 2D mode - cannot test Z rotation");
+      return;
+    }
+
+    const camera = this.viewer.scene.camera;
+    const newHeading = camera.heading + Cesium.Math.toRadians(degrees);
+
+    camera.setView({
+      orientation: {
+        heading: newHeading,
+        pitch: Cesium.Math.toRadians(-90),
+        roll: 0,
+      },
+    });
+
+    console.log(
+      `[ViewManager2D] Rotated ${degrees}° around Z-axis. New heading: ${Cesium.Math.toDegrees(
+        newHeading
+      )}°`
+    );
+  }
+
+  /**
    * Cleanup method for proper disposal
    */
   destroy() {
     if (this.is2DMode) {
       this.exit2DMode();
     }
-    
+
     this.remove2DEventHandlers();
     this.viewer = null;
     this.currentBuilding = null;
