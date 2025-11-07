@@ -3,6 +3,7 @@ import { BuildingIndoor } from "./modules/building-indoor.js";
 import { IndoorNetwork } from "./modules/indoor-network.js";
 import { ZClippingManager } from "./utils/zClippingManager.js";
 import { initSidebar } from "./ui/sidebar.js";
+import { ViewManager2D } from "./utils/viewManager2D.js";
 
 // Centralized State Management
 import { appState } from "./shared/AppState.js";
@@ -11,6 +12,16 @@ import {
   StateValidators,
   StateDev,
 } from "./shared/AppStateHooks.js";
+
+// View Controller for coordinated state management
+import { ViewControllerManager } from "./controllers/ViewControllerManager.js";
+
+// Services
+import { persistenceService } from "./services/PersistenceService.js";
+import { notificationSystem } from "./ui/NotificationSystem.js";
+
+// Testing tools
+import { integrationTester } from "./testing/test-integration.js";
 
 // Legacy global variables (keep for backward compatibility)
 let viewer;
@@ -107,6 +118,16 @@ async function initDemo() {
 
   // Initialize centralized state with viewer
   StateActions.initializeApp(viewer);
+
+  // Initialize ViewControllerManager for coordinated state management
+  const viewControllerManager = new ViewControllerManager(viewer);
+  window.viewControllerManager = viewControllerManager; // Make available globally for debugging
+
+  // Initialize ViewManager2D and register with controller
+  const viewManager2D = new ViewManager2D(viewer);
+  viewControllerManager.registerViewManager2D(viewManager2D);
+  window.viewManager2D = viewManager2D; // Make available globally for debugging
+
   const venueResponseFromServer = await fetch(
     `${API_BASE_URL}/api/smo3dm/venues`,
     {
@@ -124,12 +145,15 @@ async function initDemo() {
   // Initialize search box
   initBuildingSearchBox();
 
-  // Initialize sidebar and store in centralized state
+  // Initialize sidebar and register with controller
   console.log("[Demo] Initializing sidebar...");
   const sidebar = initSidebar(viewer);
   appState.setMapSidebar(sidebar);
+  viewControllerManager.registerSidebar(sidebar);
   window.mapSidebar = sidebar; // Keep for backward compatibility
-  console.log("[Demo] Sidebar initialized and stored in state");
+  console.log(
+    "[Demo] Sidebar initialized, stored in state, and registered with controller"
+  );
 
   // Inject Z-clipping bar HTML
   const zClippingBarContainer = document.getElementById(
@@ -155,6 +179,39 @@ async function initDemo() {
       StateActions.applyZClipping(parseFloat(slider.value));
     });
   }
+
+  // Initialize testing tools and show success notification
+  console.log("[Demo] 🎉 State management integration complete!");
+  console.log("[Demo] Available testing tools:");
+  console.log(
+    "  - window.integrationTester.runAllTests() - Run comprehensive tests"
+  );
+  console.log(
+    "  - window.integrationTester.quickValidation() - Quick health check"
+  );
+  console.log(
+    "  - window.integrationTester.demoMode() - Interactive demonstration"
+  );
+  console.log(
+    "  - window.viewControllerManager - View controller for debugging"
+  );
+  console.log(
+    "  - window.persistenceService - Persistence service for debugging"
+  );
+  console.log(
+    "  - window.notificationSystem - Notification system for debugging"
+  );
+
+  // Show success notification
+  // notificationSystem.success(
+  //   "State Management Integration Complete! 🎉",
+  //   "All systems initialized. Ready for 2D/3D view switching with persistence."
+  // );
+
+  // Auto-run quick validation to ensure everything works
+  setTimeout(() => {
+    integrationTester.quickValidation();
+  }, 1000);
 }
 async function setupVenueDataSources(venueGeoJson) {
   const venueDataSource = new Cesium.GeoJsonDataSource("venue_polygon");
@@ -346,6 +403,12 @@ function setupVenueClickInteraction() {
                   // Use StateActions for proper loading
                   const network = appState.getActiveNetwork(venueId);
                   StateActions.loadBuilding(venueId, buildingIndoor, network);
+
+                  // Update ViewControllerManager with building context
+                  viewControllerManager.setBuildingContext(
+                    buildingIndoor,
+                    venueId
+                  );
 
                   // Hide the venue entity
                   pf.id.show = false;
@@ -692,6 +755,9 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
 
       // Use StateActions for proper loading with state management
       StateActions.loadBuilding(venueId, buildingIndoor, indoorNetwork);
+
+      // Update ViewControllerManager with building context
+      viewControllerManager.setBuildingContext(buildingIndoor, venueId);
 
       // Set building context for sidebar 2D view using state management
       const sidebar = appState.getMapSidebar();

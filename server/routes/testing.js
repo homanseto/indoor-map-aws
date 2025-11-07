@@ -46,7 +46,7 @@ router.get("/test-db", async (req, res) => {
 
 // GET /test-read-json?file=filename.json
 router.get("/test-read-json", async (req, res) => {
-  const testDir = "./testing-data/indoor";
+  const testDir = "./testing-data/mtr";
   const jsonfiles = await fs.readdirSync(testDir);
   try {
     for (let jf of jsonfiles) {

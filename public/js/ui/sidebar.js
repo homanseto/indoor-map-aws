@@ -1,10 +1,15 @@
 import { indoorStyles } from "../utils/indoorStyles.js";
-import { ViewManager2D } from "../utils/viewManager2D.js";
+import { appState } from "../shared/AppState.js";
+import { StateHooks, StateActions } from "../shared/AppStateHooks.js";
+import { persistenceService } from "../services/PersistenceService.js";
+import { notificationSystem } from "./NotificationSystem.js";
 
 /**
  * Sidebar UI Component for Indoor Map Viewer
  * Provides a resizable sidebar with legend functionality and 2D view controls
  * Automatically repositions Cesium info box to avoid overlap
+ *
+ * Now integrated with centralized state management for reactive updates
  */
 export class Sidebar {
   constructor(viewer) {
@@ -23,10 +28,8 @@ export class Sidebar {
     this.viewControls = null;
     this.view2DButton = null;
 
-    // 2D View Manager
-    this.viewManager2D = new ViewManager2D(viewer);
-    this.currentBuilding = null;
-    this.currentVenueId = null;
+    // State management hooks
+    this.stateCleanups = [];
 
     this.init();
   }
@@ -38,7 +41,8 @@ export class Sidebar {
     this.setupInfoBoxMonitoring();
     this.create2DViewControls();
     this.createLegend();
-    this.setupViewModeListener();
+    this.setupStateManagement();
+    this.restoreSidebarState();
   }
 
   createSidebar() {
@@ -146,7 +150,7 @@ export class Sidebar {
     this.view2DButton.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      this.toggle2DView();
+      this.handleViewModeToggle();
     });
   }
 
@@ -248,6 +252,9 @@ export class Sidebar {
 
       // Update info box positioning
       this.updateInfoBoxPosition();
+
+      // Save new width to persistence
+      this.saveSidebarState();
     };
 
     const handleMouseUp = () => {
@@ -278,6 +285,7 @@ export class Sidebar {
     this.toggleButton.classList.add("sidebar-open");
     this.updateTogglePosition();
     this.updateInfoBoxPosition();
+    this.saveSidebarState();
   }
 
   hide() {
@@ -287,6 +295,7 @@ export class Sidebar {
     this.toggleButton.classList.remove("sidebar-open");
     this.toggleButton.style.right = "20px"; // Reset to default position
     this.updateInfoBoxPosition();
+    this.saveSidebarState();
   }
 
   updateTogglePosition() {
@@ -779,25 +788,37 @@ export class Sidebar {
       .replace(/^\w/, (c) => c.toUpperCase());
   }
 
-  setupViewModeListener() {
-    // Listen for view mode changes from ViewManager2D
-    document.addEventListener("viewModeChanged", (e) => {
-      this.onViewModeChanged(e.detail.is2DMode);
+  /**
+   * Setup state management hooks for reactive updates
+   */
+  setupStateManagement() {
+    // Listen for UI state changes (view mode, processing state)
+    const uiStateCleanup = StateHooks.useUIState((uiState) => {
+      this.onViewModeChanged(uiState.viewMode === "2D");
+      this.updateProcessingState(uiState.isProcessing);
     });
+    this.stateCleanups.push(uiStateCleanup);
 
-    // Listen for level selection changes to update 2D view
-    document.addEventListener("levelSelectionChanged", (e) => {
-      if (this.viewManager2D.isIn2DMode()) {
-        this.viewManager2D.update2DViewForLevel(
-          e.detail.levelId,
-          e.detail.kickMode
-        );
+    // Listen for building state changes
+    const buildingStateCleanup = StateHooks.useBuildingState(
+      (buildingState) => {
+        this.updateBuildingAvailability(buildingState);
       }
-    });
+    );
+    this.stateCleanups.push(buildingStateCleanup);
+
+    console.log("[Sidebar] State management hooks initialized");
   }
 
+  /**
+   * React to view mode changes from AppState
+   */
   onViewModeChanged(is2DMode) {
     if (!this.view2DButton) return;
+
+    console.log(
+      `[Sidebar] Reacting to view mode change: ${is2DMode ? "2D" : "3D"}`
+    );
 
     if (is2DMode) {
       this.view2DButton.classList.add("active");
@@ -814,8 +835,11 @@ export class Sidebar {
         <span class="view-button-text">2D Top View</span>
       `;
       this.view2DButton.title = "Switch to 2D top-down view";
+
+      // Check building availability from state
+      const hasActiveBuilding = appState.getLastActiveVenueId() !== null;
       this.updateStatusIndicator(
-        this.currentBuilding
+        hasActiveBuilding
           ? "3D view active"
           : "Select a building to enable 2D view"
       );
@@ -831,46 +855,144 @@ export class Sidebar {
     }
   }
 
-  toggle2DView() {
-    console.log("[Sidebar] 2D view button clicked");
+  /**
+   * Handle view mode toggle button click
+   */
+  handleViewModeToggle() {
+    console.log("[Sidebar] View mode toggle button clicked");
 
-    if (!this.currentBuilding || !this.currentVenueId) {
+    // Check if we have building context for 2D mode
+    const buildingState = {
+      lastActiveVenueId: appState.getLastActiveVenueId(),
+      hasActiveBuildings: appState.getAllActiveBuildings().size > 0,
+    };
+
+    if (appState.getViewMode() === "3D" && !buildingState.lastActiveVenueId) {
       console.warn("[Sidebar] No building selected for 2D view");
+      this.showNoListingMessage();
       return;
     }
 
-    console.log("[Sidebar] Toggling 2D mode...");
-    this.viewManager2D.toggleMode(this.currentBuilding, this.currentVenueId);
+    // Use StateActions to toggle view mode - this will trigger reactive updates
+    console.log("[Sidebar] Toggling view mode via StateActions");
+    StateActions.toggleViewMode();
   }
 
-  // Method to be called when a building is loaded/selected
-  setBuildingContext(buildingIndoor, venueId) {
-    this.currentBuilding = buildingIndoor;
-    this.currentVenueId = venueId;
+  /**
+   * Show message when no building is selected
+   */
+  showNoListingMessage() {
+    // // Show notification system message
+    // notificationSystem.buildingRequired();
 
+    // Update status indicator to show the user needs to select a building
+    this.updateStatusIndicator(
+      "Please select a building first to enable 2D view"
+    );
+
+    // Add temporary highlight effect
     if (this.view2DButton) {
-      this.view2DButton.disabled = false;
-      this.updateStatusIndicator("Building loaded - 2D view available");
+      this.view2DButton.classList.add("attention");
+      setTimeout(() => {
+        this.view2DButton.classList.remove("attention");
+      }, 2000);
     }
-
-    console.log(`[Sidebar] Building context set for venue: ${venueId}`);
   }
 
-  // Method to be called when building is unloaded
-  clearBuildingContext() {
-    // Exit 2D mode if active
-    if (this.viewManager2D.isIn2DMode()) {
-      this.viewManager2D.exit2DMode();
+  /**
+   * Update building availability based on state changes
+   */
+  updateBuildingAvailability(buildingState) {
+    const { lastActiveVenueId, count } = buildingState;
+    const hasActiveBuilding = lastActiveVenueId !== null && count > 0;
+
+    if (!this.view2DButton) return;
+
+    // Update button availability
+    this.view2DButton.disabled = !hasActiveBuilding;
+
+    // Update status indicator based on current view mode and building availability
+    const currentViewMode = appState.getViewMode();
+    if (currentViewMode === "2D") {
+      this.updateStatusIndicator("2D top view active");
+    } else {
+      this.updateStatusIndicator(
+        hasActiveBuilding
+          ? "Building loaded - 2D view available"
+          : "Select a building to enable 2D view"
+      );
     }
 
-    this.currentBuilding = null;
-    this.currentVenueId = null;
+    console.log(
+      `[Sidebar] Building availability updated: ${hasActiveBuilding}`
+    );
+  }
 
-    if (this.view2DButton) {
+  /**
+   * Update processing state (for loading indicators)
+   */
+  updateProcessingState(isProcessing) {
+    if (!this.view2DButton) return;
+
+    if (isProcessing) {
       this.view2DButton.disabled = true;
-      this.view2DButton.classList.remove("active");
-      this.updateStatusIndicator("Select a building to enable 2D view");
+      this.view2DButton.classList.add("processing");
+    } else {
+      // Re-enable based on building availability
+      const hasActiveBuilding = appState.getLastActiveVenueId() !== null;
+      this.view2DButton.disabled = !hasActiveBuilding;
+      this.view2DButton.classList.remove("processing");
     }
+  }
+
+  /**
+   * Save current sidebar state to persistence
+   */
+  saveSidebarState() {
+    persistenceService.saveSidebarState(this.isVisible, this.width);
+  }
+
+  /**
+   * Restore sidebar state from persistence
+   */
+  restoreSidebarState() {
+    const sidebarState = persistenceService.loadSidebarState();
+    if (sidebarState) {
+      console.log("[Sidebar] Restoring sidebar state from persistence");
+
+      // Restore width
+      if (
+        sidebarState.width &&
+        sidebarState.width >= this.minWidth &&
+        sidebarState.width <= this.maxWidth
+      ) {
+        this.width = sidebarState.width;
+        this.container.style.width = `${this.width}px`;
+      }
+
+      // Restore visibility
+      if (sidebarState.isVisible) {
+        // Use setTimeout to ensure DOM is ready
+        setTimeout(() => {
+          this.show();
+        }, 100);
+      }
+    }
+  }
+
+  // Legacy methods for backward compatibility (now use state management)
+  setBuildingContext(buildingIndoor, venueId) {
+    console.log(
+      `[Sidebar] setBuildingContext called (legacy) - using state management instead`
+    );
+    // The ViewControllerManager will handle this via state
+  }
+
+  clearBuildingContext() {
+    console.log(
+      `[Sidebar] clearBuildingContext called (legacy) - using state management instead`
+    );
+    // The ViewControllerManager will handle this via state
   }
 
   // Public methods for external control
@@ -879,10 +1001,9 @@ export class Sidebar {
   }
 
   destroy() {
-    // Clean up 2D view manager
-    if (this.viewManager2D) {
-      this.viewManager2D.destroy();
-    }
+    // Clean up state management hooks
+    this.stateCleanups.forEach((cleanup) => cleanup());
+    this.stateCleanups = [];
 
     if (this.container && this.container.parentNode) {
       this.container.parentNode.removeChild(this.container);
@@ -896,6 +1017,8 @@ export class Sidebar {
 
     // Clean up event listeners
     window.removeEventListener("resize", this.updateInfoBoxPosition);
+
+    console.log("[Sidebar] Destroyed and cleaned up state listeners");
   }
 }
 

@@ -6,41 +6,63 @@ import { getMongoClient } from "../dbServices/mongoClient.js";
 
 export class Utils {
   async convertToVenueMongoDBTable(data) {
-    console.log(data);
-    data.address = data.address.content.features;
-    data.building = data.building.content.features;
-    data.footprint = data.footprint.content.features;
-    data.level = data.level.content.features;
-    data.unit = data.unit.content.features;
-    data.opening = data.opening.content.features;
-    data.window = data.window ? data.window.content.features : null;
-    data.amenities = data.amenities.content.features;
-    data.anchors = data.anchors ? data.anchors.content.features : null;
-    data.occupants = data.occupants ? data.occupants.content.features : null;
-    data.venue = data.venue.content.features;
+    try {
+      console.log(data);
+      data.address = data.address.content.features;
+      data.building = data.building.content.features;
+      data.footprint = data.footprint.content.features;
+      data.level = data.level.content.features;
+      data.unit = data.unit.content.features;
+      data.opening = data.opening.content.features;
+      data.window = data.window ? data.window.content.features : null;
+      data.amenities =
+        data.buildingType === "MTR"
+          ? data.amenity.content.features
+          : data.amenities.content.features;
+      data.anchors =
+        data.buildingType === "MTR" && data.anchor
+          ? data.anchor.content.features
+          : data.anchors
+          ? data.anchors.content.features
+          : null;
+      data.occupants =
+        data.buildingType === "MTR" && data.occupant
+          ? data.occupant.content.features
+          : data.occupants
+          ? data.occupants.content.features
+          : null;
+      data.venue = data.venue.content.features;
 
-    const venue = data.venue[0];
-    const venueId = venue.id;
-    venue.properties.height = data.height;
-    venue.properties.min_height = data.min_height;
-    venue.buildingType = data.buildingType;
-    venue.region = data.region;
-    venue.displayName = data.displayName;
-    venue.buildingName = data.buildingName;
-    venue.LastAmendmentDate = data.LastAmendmentDate;
-    if (data.occupants && data.anchors) {
-      this.joinOccupantwithAnchor(data);
+      const venue = data.venue[0];
+      const venueId = venue.id;
+      venue.properties.height = data.height;
+      venue.properties.min_height = data.min_height;
+      venue.buildingType = data.buildingType;
+      venue.region = data.region;
+      venue.displayName = data.displayName;
+      venue.buildingName = data.buildingName;
+      venue.LastAmendmentDate = data.LastAmendmentDate;
+      if (data.occupants && data.anchors) {
+        this.joinOccupantwithAnchor(data);
+      }
+      this.addVenueIdToAllFeatures(data, venueId);
+      data.venue_id = venueId;
+      delete data.venue;
+      delete data.anchors;
+      if (data.buildingType === "MTR") {
+        delete data.occupant;
+        delete data.amenity;
+        delete data.anchor;
+      }
+      // Return both the venue and the cleaned data for further use
+      const result = await this.upsertVenueAndBuildingDataWithoutTransaction({
+        venue,
+        buildingData: data,
+      });
+      return result;
+    } catch (error) {
+      console.log(error);
     }
-    this.addVenueIdToAllFeatures(data, venueId);
-    data.venue_id = venueId;
-    delete data.venue;
-    delete data.anchors;
-    // Return both the venue and the cleaned data for further use
-    const result = await this.upsertVenueAndBuildingDataWithoutTransaction({
-      venue,
-      buildingData: data,
-    });
-    return result;
   }
 
   joinOccupantwithAnchor(data) {

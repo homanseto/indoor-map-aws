@@ -1,11 +1,15 @@
+import { appState } from "../shared/AppState.js";
+
 /**
  * ViewManager2D - Manages 2D top-down view functionality for Cesium viewer
  * Handles camera controls, building focus, and integration with level selection
+ *
+ * Now integrated with centralized AppState - no local state management
  */
 export class ViewManager2D {
   constructor(viewer) {
     this.viewer = viewer;
-    this.is2DMode = false;
+    // Removed: this.is2DMode - now uses appState.isIn2DMode()
     this.currentBuilding = null;
     this.savedCameraState = null;
     this.activeBuildingBounds = null;
@@ -35,12 +39,16 @@ export class ViewManager2D {
    * @param {string} venueId - The venue ID
    */
   async enter2DMode(buildingIndoor, venueId) {
-    if (this.is2DMode) {
-      console.log("Already in 2D mode");
-      return;
-    }
+    console.log(`[ViewManager2D] 🚀 Entering 2D mode for venue: ${venueId}`);
+    console.log(`[ViewManager2D] 📋 Parameters received:`, {
+      buildingIndoor: !!buildingIndoor,
+      buildingType: buildingIndoor ? buildingIndoor.constructor.name : "N/A",
+      venueId: venueId,
+      currentAppState: appState.isIn2DMode(),
+    });
 
-    console.log(`Entering 2D mode for venue: ${venueId}`);
+    // Note: Don't return early if already in 2D state - the ViewControllerManager
+    // manages the state transitions and we need to execute the view operations
 
     // Store current camera state for restoration
     this.saveCameraState();
@@ -49,41 +57,57 @@ export class ViewManager2D {
     this.currentBuilding = buildingIndoor;
 
     // Calculate building bounds for optimal 2D view
+    console.log("[ViewManager2D] 📐 Calculating building bounds...");
     const bounds = this.calculateBuildingBounds(buildingIndoor);
     if (!bounds) {
-      console.error("Cannot calculate building bounds for 2D view");
+      console.error(
+        "[ViewManager2D] ❌ Cannot calculate building bounds for 2D view"
+      );
+      console.error("[ViewManager2D] 🏗️ Building data structure:", {
+        hasBuilding: !!buildingIndoor,
+        hasBuildingData: !!buildingIndoor?.buildingData,
+        hasUnits: !!buildingIndoor?.buildingData?.units,
+        unitsType: typeof buildingIndoor?.buildingData?.units,
+        unitsLength: buildingIndoor?.buildingData?.units?.features?.length,
+      });
       return;
     }
     this.activeBuildingBounds = bounds;
+    console.log("[ViewManager2D] ✅ Building bounds calculated:", {
+      center: bounds.center,
+      width: bounds.width,
+      height: bounds.height,
+    });
 
     // Note: Venue polygon should already be hidden when building is loaded
     // Following existing pattern in demo-main-server.js where venue is hidden on building selection
 
     // Transition to 2D camera position
+    console.log("[ViewManager2D] 🎬 Starting camera transition...");
     await this.transitionTo2DCamera(bounds);
+    console.log("[ViewManager2D] ✅ Camera transition completed");
 
     // Apply 2D camera constraints
+    console.log("[ViewManager2D] 🔒 Applying 2D constraints...");
     this.apply2DConstraints();
+    console.log("[ViewManager2D] ✅ 2D constraints applied");
 
-    // Update mode state
-    this.is2DMode = true;
+    // State is managed centrally - no local state updates needed
+    // The ViewControllerManager will handle state updates
 
-    // Trigger UI updates
-    this.notifyModeChange(true);
-
-    console.log("Successfully entered 2D mode");
+    console.log(
+      "[ViewManager2D] ✅ Successfully entered 2D mode - all operations completed"
+    );
   }
 
   /**
    * Exit 2D mode and return to 3D view
    */
   async exit2DMode() {
-    if (!this.is2DMode) {
-      console.log("Not in 2D mode");
-      return;
-    }
+    console.log("[ViewManager2D] 🚀 Exiting 2D mode");
 
-    console.log("Exiting 2D mode");
+    // Note: Don't check state here - the ViewControllerManager manages state transitions
+    // and we need to execute the view operations regardless of current state
 
     // Remove camera constraints
     this.remove2DConstraints();
@@ -95,17 +119,15 @@ export class ViewManager2D {
     // Return to standard building overview
     await this.returnToStandardView();
 
-    // Clear state
-    this.is2DMode = false;
+    // Clear local state (but not centralized state)
     this.currentBuilding = null;
     this.activeBuildingBounds = null;
     this.savedCameraState = null;
 
-    // Trigger UI updates
-    this.notifyModeChange(false);
+    // State management is handled centrally - no local state updates needed
 
     console.log(
-      "Successfully exited 2D mode - venue remains hidden as expected"
+      "[ViewManager2D] Successfully exited 2D mode - venue remains hidden as expected"
     );
   }
 
@@ -118,10 +140,10 @@ export class ViewManager2D {
     console.log("[ViewManager2D] toggleMode called with:", {
       buildingIndoor,
       venueId,
-      is2DMode: this.is2DMode,
+      is2DMode: appState.isIn2DMode(),
     });
 
-    if (this.is2DMode) {
+    if (appState.isIn2DMode()) {
       console.log("[ViewManager2D] Currently in 2D mode, switching to 3D");
       await this.exit2DMode();
     } else {
@@ -136,7 +158,11 @@ export class ViewManager2D {
    * @param {boolean} kickMode - Whether to show levels below
    */
   update2DViewForLevel(levelId, kickMode) {
-    if (!this.is2DMode || !this.currentBuilding || !this.activeBuildingBounds) {
+    if (
+      !appState.isIn2DMode() ||
+      !this.currentBuilding ||
+      !this.activeBuildingBounds
+    ) {
       return;
     }
 
@@ -565,20 +591,14 @@ export class ViewManager2D {
    * Notify other components about mode changes
    * @param {boolean} is2D - Whether entering 2D mode
    */
-  notifyModeChange(is2D) {
-    // Dispatch custom event for UI components to listen
-    const event = new CustomEvent("viewModeChanged", {
-      detail: { is2DMode: is2D, viewManager: this },
-    });
-    document.dispatchEvent(event);
-  }
+  // Removed notifyModeChange - state changes are handled centrally by AppState
 
   /**
    * Get current mode state
    * @returns {boolean} True if in 2D mode
    */
   isIn2DMode() {
-    return this.is2DMode;
+    return appState.isIn2DMode();
   }
 
   /**
@@ -594,7 +614,7 @@ export class ViewManager2D {
    * @param {number} degrees - Degrees to rotate (for testing)
    */
   testZRotation(degrees = 45) {
-    if (!this.is2DMode) {
+    if (!appState.isIn2DMode()) {
       console.log("[ViewManager2D] Not in 2D mode - cannot test Z rotation");
       return;
     }
@@ -621,7 +641,7 @@ export class ViewManager2D {
    * Cleanup method for proper disposal
    */
   destroy() {
-    if (this.is2DMode) {
+    if (appState.isIn2DMode()) {
       this.exit2DMode();
     }
 
