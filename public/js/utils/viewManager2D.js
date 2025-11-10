@@ -206,51 +206,37 @@ export class ViewManager2D {
       "[ViewManager2D] calculateBuildingBounds called with:",
       buildingIndoor
     );
+    const venueGeoJson = appState.getVenueGeoJson();
+    const mult = venueGeoJson.features.find(
+      (v) => v.geometry.type === "MultiPolygon"
+    );
+    const matchedVenue = venueGeoJson.features.find(
+      (f) => f.id === buildingIndoor.buildingData.venue_id
+    );
 
-    if (!buildingIndoor.buildingData || !buildingIndoor.buildingData.units) {
+    if (!matchedVenue || !buildingIndoor.buildingData) {
       console.error("[ViewManager2D] No building data or units found");
       return null;
     }
-
-    const units = buildingIndoor.buildingData.units.features;
-    if (units.length === 0) {
-      console.error("[ViewManager2D] No units found in building data");
-      return null;
-    }
-
-    console.log(
-      "[ViewManager2D] Found",
-      units.length,
-      "units for bounds calculation"
-    );
 
     let minLon = Number.MAX_VALUE;
     let maxLon = Number.MIN_VALUE;
     let minLat = Number.MAX_VALUE;
     let maxLat = Number.MIN_VALUE;
-    let minHeight = Number.MAX_VALUE;
-    let maxHeight = Number.MIN_VALUE;
+    let minHeight = matchedVenue.properties.min_height;
+    let maxHeight = matchedVenue.properties.height;
 
     // Calculate bounding box from all units
-    units.forEach((unit) => {
-      if (unit.geometry && unit.geometry.coordinates) {
-        const coords = unit.geometry.coordinates[0];
-        coords.forEach((coord) => {
-          minLon = Math.min(minLon, coord[0]);
-          maxLon = Math.max(maxLon, coord[0]);
-          minLat = Math.min(minLat, coord[1]);
-          maxLat = Math.max(maxLat, coord[1]);
-        });
-      }
-    });
-
-    // Calculate height range from levels
-    if (buildingIndoor.buildingData.levels) {
-      buildingIndoor.buildingData.levels.features.forEach((level) => {
-        const zValue = level.properties.zValue;
-        minHeight = Math.min(minHeight, zValue);
-        maxHeight = Math.max(maxHeight, zValue);
+    if (matchedVenue.geometry.type === "Polygon") {
+      matchedVenue.geometry.coordinates[0].forEach((coord) => {
+        minLon = Math.min(minLon, coord[0]);
+        maxLon = Math.max(maxLon, coord[0]);
+        minLat = Math.min(minLat, coord[1]);
+        maxLat = Math.max(maxLat, coord[1]);
       });
+    } else if (matchedVenue.geometry.type === "MultiPolygon") {
+      let coordinates = [];
+      matchedVenue.geometry.coordinates.forEach((c) => {});
     }
 
     const center = {
@@ -271,7 +257,7 @@ export class ViewManager2D {
       rectangle,
       minHeight,
       maxHeight,
-      venueId: units[0].properties.venue_id,
+      venueId: matchedVenue.id,
       width: maxLon - minLon,
       height: maxLat - minLat,
     };
@@ -328,10 +314,10 @@ export class ViewManager2D {
     const distance = maxDimension / 2 / Math.tan(fov / 2);
 
     // Add generous padding for better overview (1.5x instead of 1.2x)
-    const paddedDistance = distance * 1.5;
+    const paddedDistance = distance * 2.5;
 
     // Ensure minimum distance for usability but allow unlimited zoom
-    return Math.max(50, paddedDistance); // Minimum 50m, no maximum
+    return Math.max(200, paddedDistance); // Minimum 50m, no maximum
   }
 
   /**
@@ -494,36 +480,47 @@ export class ViewManager2D {
     if (!this.activeBuildingBounds) return;
 
     const bounds = this.activeBuildingBounds;
+    const venue_id = this.currentBuilding.buildingData.venue_id;
+    const building = appState.getActiveBuilding(venue_id);
 
-    // Calculate distance to see entire building in 3D perspective
-    const baseDistance = this.calculateOptimalDistance(bounds);
-    const standardDistance = baseDistance * 2.0; // Further back for full building view
+    if (building.dataSources && building.dataSources.units) {
+      const unitsDataSource = building.dataSources.units;
+      if (unitsDataSource.entities.values.length > 0) {
+        await viewer.flyTo(unitsDataSource.entities.values, {
+          duration: 2.0,
+          offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
+        });
+      }
+    }
+    // // Calculate distance to see entire building in 3D perspective
+    // const baseDistance = this.calculateOptimalDistance(bounds);
+    // const standardDistance = baseDistance * 2.0; // Further back for full building view
 
-    // Position camera to show entire building including all levels
-    const cameraHeight =
-      bounds.minHeight + (bounds.maxHeight - bounds.minHeight) / 2;
+    // // Position camera to show entire building including all levels
+    // const cameraHeight =
+    //   bounds.minHeight + (bounds.maxHeight - bounds.minHeight) / 2;
 
-    return new Promise((resolve) => {
-      this.viewer.scene.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(
-          bounds.center.longitude,
-          bounds.center.latitude,
-          cameraHeight + standardDistance
-        ),
-        orientation: {
-          heading: 0, // North-up
-          pitch: Cesium.Math.toRadians(-35), // Better angle to see building structure
-          roll: 0,
-        },
-        duration: 1.5,
-        complete: () => {
-          console.log(
-            "[ViewManager2D] Returned to 3D view - entire building visible"
-          );
-          resolve();
-        },
-      });
-    });
+    // return new Promise((resolve) => {
+    //   this.viewer.scene.camera.flyTo({
+    //     destination: Cesium.Cartesian3.fromDegrees(
+    //       bounds.center.longitude,
+    //       bounds.center.latitude,
+    //       cameraHeight + standardDistance
+    //     ),
+    //     orientation: {
+    //       heading: 0, // North-up
+    //       pitch: Cesium.Math.toRadians(-35), // Better angle to see building structure
+    //       roll: 0,
+    //     },
+    //     duration: 1.5,
+    //     complete: () => {
+    //       console.log(
+    //         "[ViewManager2D] Returned to 3D view - entire building visible"
+    //       );
+    //       resolve();
+    //     },
+    //   });
+    // });
   }
 
   /**
