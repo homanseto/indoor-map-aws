@@ -90,6 +90,7 @@ export class ViewManager2D {
     // Apply 2D camera constraints
     console.log("[ViewManager2D] 🔒 Applying 2D constraints...");
     this.apply2DConstraints();
+    await this.createUnitLabels();
     console.log("[ViewManager2D] ✅ 2D constraints applied");
 
     // State is managed centrally - no local state updates needed
@@ -261,6 +262,20 @@ export class ViewManager2D {
       width: maxLon - minLon,
       height: maxLat - minLat,
     };
+  }
+
+  async createUnitLabels() {
+    const unitLabels = appState.getUnitLabels();
+    if (unitLabels.dataSource) {
+      // Labels already exist
+      return;
+    }
+    const venue_id = this.currentBuilding.buildingData.venue_id;
+    const building = appState.getActiveBuilding(venue_id);
+    const newUnitLabelDataSource = new Cesium.CustomDataSource("unit_labels");
+    const selectedLevel = appState.getSelectedLevel();
+    if (selectedLevel === "ALL") {
+    }
   }
 
   /**
@@ -492,35 +507,6 @@ export class ViewManager2D {
         });
       }
     }
-    // // Calculate distance to see entire building in 3D perspective
-    // const baseDistance = this.calculateOptimalDistance(bounds);
-    // const standardDistance = baseDistance * 2.0; // Further back for full building view
-
-    // // Position camera to show entire building including all levels
-    // const cameraHeight =
-    //   bounds.minHeight + (bounds.maxHeight - bounds.minHeight) / 2;
-
-    // return new Promise((resolve) => {
-    //   this.viewer.scene.camera.flyTo({
-    //     destination: Cesium.Cartesian3.fromDegrees(
-    //       bounds.center.longitude,
-    //       bounds.center.latitude,
-    //       cameraHeight + standardDistance
-    //     ),
-    //     orientation: {
-    //       heading: 0, // North-up
-    //       pitch: Cesium.Math.toRadians(-35), // Better angle to see building structure
-    //       roll: 0,
-    //     },
-    //     duration: 1.5,
-    //     complete: () => {
-    //       console.log(
-    //         "[ViewManager2D] Returned to 3D view - entire building visible"
-    //       );
-    //       resolve();
-    //     },
-    //   });
-    // });
   }
 
   /**

@@ -55,6 +55,17 @@ class AppStateManager {
     this.persistenceEnabled = true;
     this.persistenceKey = "indoorMapViewerState";
 
+    // unit labels
+    this.unitLabels = {
+      dataSource: null,
+      isVisible: false,
+      venue_id: "",
+      level_id: "",
+      visibilityDistance: 100, // Show labels when camera is within 100 meters
+      maxLabels: 15, // Show maximum 15 labels at once
+      lastCameraDistance: Number.MAX_VALUE,
+    };
+
     // Initialize
     this.init();
   }
@@ -135,6 +146,19 @@ class AppStateManager {
    */
   getViewer() {
     return this.viewer;
+  }
+
+  setUnitLabels(unitLabels) {
+    const oldUnitLabel = this.unitLabels;
+    this.unitLabels = unitLabels;
+  }
+
+  getUnitLabels() {
+    return this.unitLabels;
+  }
+
+  getSelectedLevel() {
+    return this.selectedLevelId;
   }
 
   /**
