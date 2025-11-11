@@ -24,6 +24,7 @@ export class ViewControllerManager {
 
     // State hook cleanup functions
     this.stateCleanups = [];
+    this.currentViewMode = appState.getViewMode();
 
     this.init();
   }
@@ -85,9 +86,6 @@ export class ViewControllerManager {
    * This is where state changes get translated to actual view operations
    */
   handleViewModeChange(newViewMode) {
-    console.log(
-      `[ViewControllerManager] 🔄 View mode change requested: ${newViewMode}`
-    );
     console.log(`[ViewControllerManager] 📊 Current state before change:`, {
       hasViewManager2D: !!this.viewManager2D,
       currentBuilding: !!this.currentBuilding,
@@ -97,6 +95,10 @@ export class ViewControllerManager {
         ? this.viewManager2D.isIn2DMode()
         : "N/A",
     });
+    if (this.currentViewMode === newViewMode) {
+      return; // no change; skip re-entering 2D
+    }
+    this.currentViewMode = newViewMode;
 
     if (!this.viewManager2D) {
       console.error(

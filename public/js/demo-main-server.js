@@ -62,6 +62,14 @@ function handleIndoorFeatureClick(selectedEntity) {
 
   // If already the active building, do nothing
   const currentActive = appState.getLastActiveVenueId();
+  if (appState.isIn2DMode() && currentActive === venueId) {
+    // Building is already active in 2D; highlight and bail
+    const building = appState.getActiveBuilding(venueId);
+    if (building?.highlightFeature) {
+      building.highlightFeature(selectedEntity);
+    }
+    return;
+  }
   if (currentActive === venueId) return;
 
   // Deactivate previous building
