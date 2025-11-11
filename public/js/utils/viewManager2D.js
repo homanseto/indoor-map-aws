@@ -406,18 +406,28 @@ export class ViewManager2D {
 
     // Restore original settings
     controller.minimumZoomDistance =
-      this.originalCameraSettings.minimumZoomDistance;
+      this.originalCameraSettings?.minimumZoomDistance ??
+      controller.minimumZoomDistance;
     controller.maximumZoomDistance =
-      this.originalCameraSettings.maximumZoomDistance;
-    controller.enableTilt = this.originalCameraSettings.enableTilt;
-    controller.enableLook = this.originalCameraSettings.enableLook;
-    controller.enableRotate = this.originalCameraSettings.enableRotate;
-    controller.enableZoom = this.originalCameraSettings.enableZoom;
-    controller.enableTranslate = this.originalCameraSettings.enableTranslate;
-    controller.inertiaSpin = this.originalCameraSettings.inertiaSpin;
-    controller.inertiaTranslate = this.originalCameraSettings.inertiaTranslate;
-    controller.inertiaZoom = this.originalCameraSettings.inertiaZoom;
-    camera.constrainedAxis = this.originalCameraSettings.constrainedAxis;
+      this.originalCameraSettings?.maximumZoomDistance ??
+      controller.maximumZoomDistance;
+
+    controller.enableTilt = true;
+    controller.enableLook = true;
+    controller.enableRotate = true; // always re-enable rotation in 3D
+    controller.enableZoom = true;
+    controller.enableTranslate = true;
+
+    controller.inertiaSpin =
+      this.originalCameraSettings?.inertiaSpin ?? controller.inertiaSpin;
+    controller.inertiaTranslate =
+      this.originalCameraSettings?.inertiaTranslate ??
+      controller.inertiaTranslate;
+    controller.inertiaZoom =
+      this.originalCameraSettings?.inertiaZoom ?? controller.inertiaZoom;
+
+    camera.constrainedAxis =
+      this.originalCameraSettings?.constrainedAxis ?? undefined;
 
     // Remove event handlers
     this.remove2DEventHandlers();
