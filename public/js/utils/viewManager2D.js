@@ -90,9 +90,25 @@ export class ViewManager2D {
     // Apply 2D camera constraints
     console.log("[ViewManager2D] 🔒 Applying 2D constraints...");
     this.apply2DConstraints();
-    await this.createUnitLabels();
     console.log("[ViewManager2D] ✅ 2D constraints applied");
 
+    ////determine which level to label/////
+    const selectedLevel = appState.getSelectedLevel();
+    const levels = this.getSortedLevels(buildingIndoor);
+
+    let levelId = null;
+    if (selectedLevel && selectedLevel !== "ALL") {
+      levelId = selectedLevel;
+    } else if (levels.length > 0) {
+      levelId = levels[0].id; // highest level
+    }
+
+    appState.setUnitLabelState({
+      active: !!levelId,
+      venueId,
+      levelId,
+    });
+    ////determine which level to label/////
     // State is managed centrally - no local state updates needed
     // The ViewControllerManager will handle state updates
 
@@ -109,7 +125,7 @@ export class ViewManager2D {
 
     // Note: Don't check state here - the ViewControllerManager manages state transitions
     // and we need to execute the view operations regardless of current state
-
+    appState.resetUnitLabelState();
     // Remove camera constraints
     this.remove2DConstraints();
 
@@ -264,20 +280,6 @@ export class ViewManager2D {
     };
   }
 
-  async createUnitLabels() {
-    const unitLabels = appState.getUnitLabels();
-    if (unitLabels.dataSource) {
-      // Labels already exist
-      return;
-    }
-    const venue_id = this.currentBuilding.buildingData.venue_id;
-    const building = appState.getActiveBuilding(venue_id);
-    const newUnitLabelDataSource = new Cesium.CustomDataSource("unit_labels");
-    const selectedLevel = appState.getSelectedLevel();
-    if (selectedLevel === "ALL") {
-    }
-  }
-
   /**
    * Transition camera to 2D top-down view
    * @param {Object} bounds - Building bounds
@@ -430,6 +432,13 @@ export class ViewManager2D {
     console.log(
       "[ViewManager2D] 2D constraints removed - full 3D camera control restored"
     );
+  }
+
+  getSortedLevels(buildingIndoor) {
+    const levels = buildingIndoor?.buildingData?.levels?.features ?? [];
+    return levels
+      .slice()
+      .sort((a, b) => b.properties.zValue - a.properties.zValue);
   }
 
   /**

@@ -56,15 +56,7 @@ class AppStateManager {
     this.persistenceKey = "indoorMapViewerState";
 
     // unit labels
-    this.unitLabels = {
-      dataSource: null,
-      isVisible: false,
-      venue_id: "",
-      level_id: "",
-      visibilityDistance: 100, // Show labels when camera is within 100 meters
-      maxLabels: 15, // Show maximum 15 labels at once
-      lastCameraDistance: Number.MAX_VALUE,
-    };
+    this.unitLabelState = { active: false, venueId: null, levelId: null };
 
     // Initialize
     this.init();
@@ -148,17 +140,46 @@ class AppStateManager {
     return this.viewer;
   }
 
-  setUnitLabels(unitLabels) {
-    const oldUnitLabel = this.unitLabels;
-    this.unitLabels = unitLabels;
+  getUnitLabelState() {
+    return { ...this.unitLabelState };
   }
 
-  getUnitLabels() {
-    return this.unitLabels;
+  setUnitLabelState(nextState) {
+    const previous = this.unitLabelState;
+    const merged = {
+      active: false,
+      venueId: null,
+      levelId: null,
+      ...nextState,
+    };
+
+    const changed =
+      previous.active !== merged.active ||
+      previous.venueId !== merged.venueId ||
+      previous.levelId !== merged.levelId;
+
+    if (!changed) return;
+
+    this.unitLabelState = merged;
+    this.emit("unitLabelStateChanged", { previous, current: merged });
+  }
+
+  resetUnitLabelState() {
+    this.setUnitLabelState({ active: false, venueId: null, levelId: null });
   }
 
   getSelectedLevel() {
     return this.selectedLevelId;
+  }
+
+  // public/js/shared/AppState.js
+  setSelectedLevel(levelId) {
+    if (this.selectedLevelId === levelId) return;
+
+    const previous = this.selectedLevelId;
+    this.selectedLevelId = levelId;
+
+    this.emit("selectedLevelChanged", { previous, current: levelId });
   }
 
   /**

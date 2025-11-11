@@ -1,3 +1,5 @@
+import { appState } from "../shared/AppState.js";
+import { StateHooks } from "../shared/AppStateHooks.js";
 import { indoorStyles } from "../utils/indoorStyles.js";
 import { customizeEntityDisplayInfo } from "../utils/informationBox.js";
 // BuildingIndoor class for managing 3D building visualization
@@ -13,17 +15,14 @@ export class BuildingIndoor {
     this.selectedEntity = null;
     this.highlightEntity = null;
 
-    // Unit labeling system
-    this.unitLabels = {
-      dataSource: null,
-      isVisible: false,
-      visibilityDistance: 100, // Show labels when camera is within 100 meters
-      maxLabels: 15, // Show maximum 15 labels at once
-      lastCameraDistance: Number.MAX_VALUE,
-    };
+    // unit-labels
+    this.stateCleanups = [];
+    this.unitLabelDataSource = null;
 
-    // Set up camera change listener for dynamic label visibility
-    this.setupCameraListener();
+    const unitLabelCleanup = StateHooks.useUnitLabelState((labelState) => {
+      this.handleUnitLabelStateChange(labelState);
+    });
+    this.stateCleanups.push(unitLabelCleanup);
 
     // TODO: Initialize Cesium entities based on buildingData, using this.styles as needed
   }
@@ -146,242 +145,68 @@ export class BuildingIndoor {
     }
   }
 
-  // Set up camera change listener for dynamic label visibility
-  setupCameraListener() {
-    if (!this.viewer.scene.camera) return;
-
-    this.cameraChangedListener = () => {
-      this.updateUnitLabelVisibility();
-    };
-
-    this.startCameraMonitoring();
+  /////unit-labels/////
+  ensureUnitLabelDataSource() {
+    if (!this.unitLabelDataSource) {
+      this.unitLabelDataSource = new Cesium.CustomDataSource("unit_labels");
+      this.viewer.dataSources.add(this.unitLabelDataSource);
+    }
+    return this.unitLabelDataSource;
   }
 
-  // Start monitoring camera changes
-  startCameraMonitoring() {
-    if (this.cameraChangedListener && this.viewer.scene.camera) {
-      this.viewer.scene.camera.changed.addEventListener(
-        this.cameraChangedListener
-      );
+  removeUnitLabels() {
+    if (this.unitLabelDataSource) {
+      this.viewer.dataSources.remove(this.unitLabelDataSource);
+      this.unitLabelDataSource = null;
     }
   }
-
-  // Stop monitoring camera changes
-  stopCameraMonitoring() {
-    if (this.cameraChangedListener && this.viewer.scene.camera) {
-      this.viewer.scene.camera.changed.removeEventListener(
-        this.cameraChangedListener
-      );
-    }
-  }
-
-  // Update unit label visibility based on camera distance
-  updateUnitLabelVisibility() {
-    if (!this.buildingData.units || !this.buildingData.units.features.length)
-      return;
-
-    const cameraDistance = this.calculateCameraDistanceToBuilding();
-    const shouldShowLabels =
-      cameraDistance <= this.unitLabels.visibilityDistance;
-
-    // Only update if visibility state changed to avoid unnecessary operations
-    if (shouldShowLabels !== this.unitLabels.isVisible) {
-      if (shouldShowLabels) {
-        this.createUnitLabels();
-      } else {
-        this.removeUnitLabels();
-      }
-      this.unitLabels.isVisible = shouldShowLabels;
-    } else if (shouldShowLabels) {
-      // Labels are visible but camera moved - refresh selection based on new camera position
-      this.refreshUnitLabels();
-    }
-
-    this.unitLabels.lastCameraDistance = cameraDistance;
-  }
-
-  // Calculate camera distance to building center
-  calculateCameraDistanceToBuilding() {
-    if (!this.buildingData.units || !this.buildingData.units.features.length) {
-      return Number.MAX_VALUE;
-    }
-
-    // Calculate building center from first unit (approximation)
-    const firstUnit = this.buildingData.units.features[0];
-    if (!firstUnit.geometry || !firstUnit.geometry.coordinates) {
-      return Number.MAX_VALUE;
-    }
-
-    // Get approximate center of first unit polygon
-    const coords = firstUnit.geometry.coordinates[0];
-    let centerLon = 0,
-      centerLat = 0;
-    coords.forEach((coord) => {
-      centerLon += coord[0];
-      centerLat += coord[1];
-    });
-    centerLon /= coords.length;
-    centerLat /= coords.length;
-
-    const buildingCenter = Cesium.Cartesian3.fromDegrees(centerLon, centerLat);
-    const cameraPosition = this.viewer.scene.camera.position;
-
-    return Cesium.Cartesian3.distance(cameraPosition, buildingCenter);
-  }
-
-  // Create unit labels dynamically
-  createUnitLabels() {
-    if (this.unitLabels.dataSource) {
-      // Labels already exist
+  handleUnitLabelStateChange(labelState) {
+    const activeBuilding = appState.getActiveBuilding(labelState.venueId);
+    if (activeBuilding !== this) {
+      this.removeUnitLabels();
       return;
     }
 
-    this.unitLabels.dataSource = new Cesium.CustomDataSource("unit_labels");
+    if (!labelState.active || !labelState.levelId) {
+      this.removeUnitLabels();
+      return;
+    }
 
-    // Get currently visible units based on level filtering and camera position
-    const visibleUnits = this.getVisibleUnitsForLabeling();
+    const ds = this.ensureUnitLabelDataSource();
+    ds.entities.removeAll();
 
-    visibleUnits.forEach((unit) => {
-      if (!unit.properties.nameEn) return; // Skip units without names
+    const units = this.buildingData.units?.features ?? [];
+    units
+      .filter(
+        (unit) =>
+          unit.properties.level_id === labelState.levelId &&
+          unit.properties.nameEn
+      )
+      .forEach((unit) => {
+        const center = this.calculatePolygonCenter(
+          unit.geometry.coordinates[0]
+        );
+        if (!center) return;
 
-      // Calculate polygon center
-      const center = this.calculatePolygonCenter(unit.geometry.coordinates[0]);
-      if (!center) return;
-
-      // Get unit level height
-      const levelHeight = this.getLevelHeight(unit.properties.level_id);
-
-      // Create billboard label
-      const labelEntity = new Cesium.Entity({
-        id: `unit_label_${unit.id}`,
-        position: Cesium.Cartesian3.fromDegrees(
-          center.lon,
-          center.lat,
-          levelHeight + 0.5
-        ),
-        billboard: {
-          image: this.createTextCanvas(unit.properties.nameEn),
-          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-          horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
-          scale: 0.8,
-          pixelOffset: new Cesium.Cartesian2(0, -10),
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
-          heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
-        },
-        properties: {
-          feature_type: "unit_label",
-          unit_id: unit.id,
-          level_id: unit.properties.level_id,
-          zValue: levelHeight,
-          venue_id: unit.properties.venue_id,
-        },
+        ds.entities.add({
+          id: `unit_label_${unit.id}`,
+          position: Cesium.Cartesian3.fromDegrees(center.lon, center.lat),
+          billboard: {
+            image: this.createTextCanvas(unit.properties.nameEn),
+            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+            horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+            scale: 1.0,
+            disableDepthTestDistance: Number.POSITIVE_INFINITY,
+            heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
+          },
+        });
       });
 
-      this.unitLabels.dataSource.entities.add(labelEntity);
-    });
-
-    if (this.unitLabels.dataSource.entities.values.length > 0) {
-      this.viewer.dataSources.add(this.unitLabels.dataSource);
+    if (ds.entities.values.length === 0) {
+      this.removeUnitLabels();
     }
   }
-
-  // Remove unit labels
-  removeUnitLabels() {
-    if (this.unitLabels.dataSource) {
-      this.viewer.dataSources.remove(this.unitLabels.dataSource);
-      this.unitLabels.dataSource = null;
-    }
-  }
-
-  // Get units visible for labeling based on level filtering and camera position
-  getVisibleUnitsForLabeling() {
-    if (!this.buildingData.units || !this.buildingData.units.features) {
-      return [];
-    }
-
-    // Get levels data for filtering
-    const levelsRaw =
-      this.buildingData.levels &&
-      Array.isArray(this.buildingData.levels.features)
-        ? this.buildingData.levels.features
-        : [];
-
-    const levels = levelsRaw
-      .slice()
-      .sort((a, b) => b.properties.zValue - a.properties.zValue);
-
-    // Determine which levels to show
-    let allowedLevelIds = [];
-
-    if (!this.selectedLevelId || this.selectedLevelId === "ALL") {
-      // When "ALL" is selected, only show top 2-3 levels to reduce clutter
-      const maxLevelsToShow = levels.length > 3 ? 3 : levels.length;
-      allowedLevelIds = levels.slice(0, maxLevelsToShow).map((lvl) => lvl.id);
-    } else {
-      // Specific level selected
-      const selectedLevel = levels.find(
-        (lvl) => lvl.id === this.selectedLevelId
-      );
-
-      if (!selectedLevel) {
-        return [];
-      }
-
-      if (this.kickMode && selectedLevel) {
-        // Show all levels with zValue <= selected (i.e., below or at selected)
-        allowedLevelIds = levels
-          .filter(
-            (lvl) => lvl.properties.zValue <= selectedLevel.properties.zValue
-          )
-          .map((lvl) => lvl.id);
-      } else {
-        // Only show selected level
-        allowedLevelIds = [this.selectedLevelId];
-      }
-    }
-
-    // Filter units by allowed level IDs
-    let filteredUnits = this.buildingData.units.features.filter(
-      (unit) =>
-        allowedLevelIds.includes(unit.properties.level_id) &&
-        unit.properties.nameEn
-    );
-
-    // Limit to closest units based on camera position and direction
-    if (filteredUnits.length > this.unitLabels.maxLabels) {
-      const cameraPosition = this.viewer.scene.camera.position;
-
-      // Calculate distance from camera to each unit
-      const unitsWithDistance = filteredUnits
-        .map((unit) => {
-          const center = this.calculatePolygonCenter(
-            unit.geometry.coordinates[0]
-          );
-          if (!center) return null;
-
-          const unitPosition = Cesium.Cartesian3.fromDegrees(
-            center.lon,
-            center.lat
-          );
-          const distance = Cesium.Cartesian3.distance(
-            cameraPosition,
-            unitPosition
-          );
-
-          return { unit, distance };
-        })
-        .filter((item) => item !== null);
-
-      // Sort by distance and take closest units
-      const sortedUnits = unitsWithDistance
-        .sort((a, b) => a.distance - b.distance)
-        .slice(0, this.unitLabels.maxLabels);
-
-      filteredUnits = sortedUnits.map((item) => item.unit);
-    }
-
-    return filteredUnits;
-  }
+  //////unit-labels/////
 
   // Calculate polygon center point
   calculatePolygonCenter(coordinates) {
@@ -398,18 +223,6 @@ export class BuildingIndoor {
       lon: centerLon / coordinates.length,
       lat: centerLat / coordinates.length,
     };
-  }
-
-  // Get level height for a given level ID
-  getLevelHeight(levelId) {
-    if (!this.buildingData.levels || !this.buildingData.levels.features) {
-      return 0;
-    }
-
-    const level = this.buildingData.levels.features.find(
-      (lvl) => lvl.id === levelId
-    );
-    return level ? level.properties.zValue : 0;
   }
 
   // Create text canvas with transparent background
@@ -440,15 +253,6 @@ export class BuildingIndoor {
     context.fillText(text, centerX, centerY);
 
     return canvas;
-  }
-
-  // Refresh unit labels based on current level filtering and camera distance
-  refreshUnitLabels() {
-    if (this.unitLabels.isVisible) {
-      // Labels are currently visible, recreate them with new filtering
-      this.removeUnitLabels();
-      this.createUnitLabels();
-    }
   }
 
   // Initialize the level selection bar UI
@@ -538,6 +342,7 @@ export class BuildingIndoor {
   // Handle level selection event
   handleLevelSelect(levelId) {
     this.selectedLevelId = levelId;
+    appState.setSelectedLevel(levelId);
     // Highlight selected button
     if (this.levelBarEl) {
       Array.from(this.levelBarEl.children).forEach((btn) => {
@@ -546,6 +351,15 @@ export class BuildingIndoor {
     }
     // Filter displayed features by selected level and kickMode
     this.filterFeaturesByLevel(levelId, this.kickMode);
+
+    //// When the user selects a level while in 2D
+    if (appState.isIn2DMode()) {
+      appState.setUnitLabelState({
+        active: true,
+        venueId: appState.getLastActiveVenueId(),
+        levelId,
+      });
+    }
 
     // Notify other components about level selection change
     document.dispatchEvent(
@@ -642,9 +456,6 @@ export class BuildingIndoor {
         this.highlightEntity.show = this.selectedEntity.show;
       }
     }
-
-    // Refresh unit labels when level filtering changes
-    this.refreshUnitLabels();
   }
 
   // Reset the level bar and show all entities (ALL mode) for this building
@@ -778,12 +589,6 @@ export class BuildingIndoor {
     // Clear any highlights first
     this.clearSelection();
 
-    // Stop camera monitoring
-    this.stopCameraMonitoring();
-
-    // Remove unit labels
-    this.removeUnitLabels();
-
     // Remove all Cesium entities related to this building (including walls)
     if (this.dataSources) {
       Object.values(this.dataSources).forEach((ds) => {
@@ -791,6 +596,11 @@ export class BuildingIndoor {
       });
       this.dataSources = {};
     }
+    // unit-labels
+    this.stateCleanups.forEach((cleanup) => cleanup());
+    this.stateCleanups = [];
+    this.removeUnitLabels();
+
     console.log("Building and associated walls destroyed");
     // Optionally, clear the level bar if this building owns it
     // (Handled by new building's initLevelBar)
@@ -854,21 +664,6 @@ export class BuildingIndoor {
         this.highlightEntity.show = this.selectedEntity.show;
       }
     }
-
-    // Apply Z-clipping to unit labels
-    if (this.unitLabels.dataSource) {
-      this.unitLabels.dataSource.entities.values.forEach((entity) => {
-        let entityZ = null;
-        if (entity.properties && entity.properties.zValue !== undefined) {
-          entityZ = entity.properties.zValue.getValue
-            ? entity.properties.zValue.getValue()
-            : entity.properties.zValue;
-          entityZ = parseFloat(entityZ);
-        }
-        entity.show =
-          entityZ === null || isNaN(entityZ) ? true : entityZ <= maxZ;
-      });
-    }
   }
 
   // Reset Z-clipping to show all entities
@@ -878,13 +673,6 @@ export class BuildingIndoor {
         entity.show = true;
       });
     });
-
-    // Reset Z-clipping for unit labels
-    if (this.unitLabels.dataSource) {
-      this.unitLabels.dataSource.entities.values.forEach((entity) => {
-        entity.show = true;
-      });
-    }
   }
 
   // Generate 3D walls for all units in the building

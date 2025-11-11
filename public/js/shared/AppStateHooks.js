@@ -35,6 +35,7 @@ export class StateHooks {
       "venueDataChanged",
       "processingClickChanged",
       "allActiveCleared",
+      "unitLabelStateChanged",
     ];
 
     events.forEach((event) => {
@@ -100,6 +101,10 @@ export class StateHooks {
       }),
       callback
     );
+  }
+
+  static useUnitLabelState(callback) {
+    return this.useStateSlice((state) => state.getUnitLabelState(), callback);
   }
 }
 
@@ -323,6 +328,7 @@ export class StateDev {
       "venueDataChanged",
       "allActiveCleared",
       "historyChanged",
+      "unitLabelStateChanged",
     ];
 
     const unsubscribes = events.map((event) =>
