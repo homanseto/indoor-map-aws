@@ -121,31 +121,26 @@ export class ViewManager2D {
    * Exit 2D mode and return to 3D view
    */
   async exit2DMode() {
-    console.log("[ViewManager2D] 🚀 Exiting 2D mode");
+    try {
+      console.log("[ViewManager2D] 🚀 Exiting 2D mode");
 
-    // Note: Don't check state here - the ViewControllerManager manages state transitions
-    // and we need to execute the view operations regardless of current state
-    appState.resetUnitLabelState();
-    // Remove camera constraints
-    this.remove2DConstraints();
+      appState.resetUnitLabelState();
+      // Return to standard building overview
+      await this.returnToStandardView();
 
-    // NOTE: Do NOT restore venue polygon visibility
-    // Following the existing pattern where venue remains hidden when building is selected
-    // The venue should stay hidden as per the current activeBuildings behavior
+      // Clear local state (but not centralized state)
+      this.currentBuilding = null;
+      this.activeBuildingBounds = null;
+      this.savedCameraState = null;
 
-    // Return to standard building overview
-    await this.returnToStandardView();
+      // State management is handled centrally - no local state updates needed
 
-    // Clear local state (but not centralized state)
-    this.currentBuilding = null;
-    this.activeBuildingBounds = null;
-    this.savedCameraState = null;
-
-    // State management is handled centrally - no local state updates needed
-
-    console.log(
-      "[ViewManager2D] Successfully exited 2D mode - venue remains hidden as expected"
-    );
+      console.log(
+        "[ViewManager2D] Successfully exited 2D mode - venue remains hidden as expected"
+      );
+    } finally {
+      this.remove2DConstraints();
+    }
   }
 
   /**
@@ -389,7 +384,7 @@ export class ViewManager2D {
     ];
 
     // Add event handler to maintain top-down orientation while allowing Z-rotation
-    this.maintain2DOrientation();
+    // this.maintain2DOrientation();
 
     console.log(
       "[ViewManager2D] 2D constraints applied - free Z-rotation and zoom enabled"
