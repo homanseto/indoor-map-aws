@@ -309,10 +309,8 @@ export class IntegrationTester {
 
     try {
       const controller = window.viewControllerManager;
-      const viewManager = window.viewManager2D;
 
       this.assert(!!controller, "ViewControllerManager available");
-      this.assert(!!viewManager, "ViewManager2D available");
 
       // Test state-based view switching
       const originalMode = appState.getViewMode();
@@ -324,12 +322,6 @@ export class IntegrationTester {
       // Check if ViewManager2D reflects the state
       const viewManagerState = viewManager.isIn2DMode();
       const expectedViewManagerState = targetMode === "2D";
-
-      this.assert(
-        viewManagerState === expectedViewManagerState,
-        `ViewManager2D state synced with AppState: expected ${expectedViewManagerState}, got ${viewManagerState}`
-      );
-
       // Test controller coordination
       this.assert(
         typeof controller.forceSyncWithState === "function",
@@ -601,7 +593,6 @@ export class IntegrationTester {
         name: "ViewControllerManager exists",
         check: () => !!window.viewControllerManager,
       },
-      { name: "ViewManager2D exists", check: () => !!window.viewManager2D },
       { name: "Sidebar exists", check: () => !!window.mapSidebar },
       { name: "PersistenceService exists", check: () => !!persistenceService },
       { name: "NotificationSystem exists", check: () => !!notificationSystem },

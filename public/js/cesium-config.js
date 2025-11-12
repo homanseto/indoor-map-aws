@@ -85,7 +85,7 @@ export function initializeCesiumViewer(containerId) {
     geocoder: false, // Disable geocoder search
     timeline: false, // Disable timeline (not needed for indoor mapping)
     animation: false, // Disable animation controls
-    scene3DOnly: true, // Force 3D mode only
+    scene3DOnly: false, //
   });
 
   // Remove any default imagery layers

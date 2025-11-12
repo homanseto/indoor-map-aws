@@ -3,7 +3,6 @@ import { BuildingIndoor } from "./modules/building-indoor.js";
 import { IndoorNetwork } from "./modules/indoor-network.js";
 import { ZClippingManager } from "./utils/zClippingManager.js";
 import { initSidebar } from "./ui/sidebar.js";
-import { ViewManager2D } from "./utils/viewManager2D.js";
 
 // Centralized State Management
 import { appState } from "./shared/AppState.js";
@@ -130,11 +129,6 @@ async function initDemo() {
   // Initialize ViewControllerManager for coordinated state management
   const viewControllerManager = new ViewControllerManager(viewer);
   window.viewControllerManager = viewControllerManager; // Make available globally for debugging
-
-  // Initialize ViewManager2D and register with controller
-  const viewManager2D = new ViewManager2D(viewer);
-  viewControllerManager.registerViewManager2D(viewManager2D);
-  window.viewManager2D = viewManager2D; // Make available globally for debugging
 
   const venueResponseFromServer = await fetch(
     `${API_BASE_URL}/api/smo3dm/venues`,

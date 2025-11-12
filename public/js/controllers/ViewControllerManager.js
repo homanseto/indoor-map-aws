@@ -15,7 +15,6 @@ import { notificationSystem } from "../ui/NotificationSystem.js";
 export class ViewControllerManager {
   constructor(viewer) {
     this.viewer = viewer;
-    this.viewManager2D = null;
     this.sidebar = null;
 
     // Building context
@@ -42,14 +41,6 @@ export class ViewControllerManager {
     console.log(
       "[ViewControllerManager] Initialized and listening to state changes"
     );
-  }
-
-  /**
-   * Register view components with the controller
-   */
-  registerViewManager2D(viewManager2D) {
-    this.viewManager2D = viewManager2D;
-    console.log("[ViewControllerManager] ViewManager2D registered");
   }
 
   registerSidebar(sidebar) {
@@ -87,25 +78,14 @@ export class ViewControllerManager {
    */
   handleViewModeChange(newViewMode) {
     console.log(`[ViewControllerManager] 📊 Current state before change:`, {
-      hasViewManager2D: !!this.viewManager2D,
       currentBuilding: !!this.currentBuilding,
       currentVenueId: this.currentVenueId,
       appStateMode: appState.getViewMode(),
-      viewManager2DMode: this.viewManager2D
-        ? this.viewManager2D.isIn2DMode()
-        : "N/A",
     });
     if (this.currentViewMode === newViewMode) {
       return; // no change; skip re-entering 2D
     }
     this.currentViewMode = newViewMode;
-
-    if (!this.viewManager2D) {
-      console.error(
-        "[ViewControllerManager] ❌ ViewManager2D not registered yet - cannot switch views"
-      );
-      return;
-    }
 
     // Check if we have the required building context for 2D mode
     if (newViewMode === "2D") {
@@ -220,98 +200,6 @@ export class ViewControllerManager {
   }
 
   /**
-   * Execute 2D mode entry
-   */
-  async enter2DMode() {
-    console.log("[ViewControllerManager] 🚀 Starting 2D mode entry process...");
-
-    if (!this.viewManager2D || !this.currentBuilding || !this.currentVenueId) {
-      console.error(
-        "[ViewControllerManager] ❌ Cannot enter 2D mode: missing dependencies",
-        {
-          hasViewManager2D: !!this.viewManager2D,
-          hasCurrentBuilding: !!this.currentBuilding,
-          hasCurrentVenueId: !!this.currentVenueId,
-        }
-      );
-      //   notificationSystem.buildingRequired();
-      return;
-    }
-
-    // Show loading notification
-    // const loadingId = notificationSystem.viewModeSwitchLoading("2D");
-
-    try {
-      console.log(
-        "[ViewControllerManager] 🎬 Calling viewManager2D.enter2DMode..."
-      );
-      await this.viewManager2D.enter2DMode(
-        this.currentBuilding,
-        this.currentVenueId
-      );
-
-      console.log(
-        "[ViewControllerManager] ✅ ViewManager2D.enter2DMode completed"
-      );
-      console.log("[ViewControllerManager] 🔍 Post-transition state:", {
-        appStateMode: appState.getViewMode(),
-        viewManager2DMode: this.viewManager2D.isIn2DMode(),
-      });
-
-      //   // Update loading notification to success
-      //   notificationSystem.hide(loadingId);
-      //   notificationSystem.viewModeSwitch("2D", this.getBuildingName());
-    } catch (error) {
-      console.error(
-        "[ViewControllerManager] ❌ Failed to enter 2D mode:",
-        error
-      );
-
-      //   // Update loading notification to error
-      //   notificationSystem.hide(loadingId);
-      //   notificationSystem.viewModeSwitchError("2D", error.message);
-
-      // Revert state on error
-      appState.setViewMode("3D");
-    }
-  }
-
-  /**
-   * Execute 3D mode entry
-   */
-  async exit2DMode() {
-    if (!this.viewManager2D) {
-      console.error(
-        "[ViewControllerManager] Cannot exit 2D mode: ViewManager2D not available"
-      );
-      //   notificationSystem.viewModeSwitchError(
-      //     "3D",
-      //     "View manager not available"
-      //   );
-      return;
-    }
-
-    // // Show loading notification
-    // const loadingId = notificationSystem.viewModeSwitchLoading("3D");
-
-    try {
-      console.log("[ViewControllerManager] Exiting 2D mode...");
-      await this.viewManager2D.exit2DMode();
-      console.log("[ViewControllerManager] Successfully exited 2D mode");
-
-      //   // Update loading notification to success
-      //   notificationSystem.hide(loadingId);
-      //   notificationSystem.viewModeSwitch("3D", this.getBuildingName());
-    } catch (error) {
-      console.error("[ViewControllerManager] Failed to exit 2D mode:", error);
-
-      //   // Update loading notification to error
-      //   notificationSystem.hide(loadingId);
-      //   notificationSystem.viewModeSwitchError("3D", error.message);
-    }
-  }
-
-  /**
    * Clear building context when building is unloaded
    */
   clearBuildingContext() {
@@ -375,9 +263,6 @@ export class ViewControllerManager {
       `[ViewControllerManager] 📊 Current system state before sync:`,
       {
         appStateMode: appState.getViewMode(),
-        viewManager2DMode: this.viewManager2D
-          ? this.viewManager2D.isIn2DMode()
-          : "N/A",
         hasBuilding: !!this.currentBuilding,
         venueId: this.currentVenueId,
         activeBuildingsCount: appState.getAllActiveBuildings().size,

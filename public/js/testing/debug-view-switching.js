@@ -49,7 +49,6 @@ class ViewSwitchingDebugger {
       "window.viewControllerManager",
       "ViewControllerManager"
     );
-    this.checkComponent("window.viewManager2D", "ViewManager2D");
     this.checkComponent("window.mapSidebar", "Sidebar");
     this.checkComponent("window.persistenceService", "PersistenceService");
     this.checkComponent("window.notificationSystem", "NotificationSystem");
@@ -92,26 +91,16 @@ class ViewSwitchingDebugger {
   checkStateConsistency() {
     try {
       const appStateMode = window.appState.getViewMode();
-      const viewManager2DMode = window.viewManager2D
-        ? window.viewManager2D.isIn2DMode()
-        : null;
-
       this.log(`AppState view mode: ${appStateMode}`, "info");
-      this.log(`ViewManager2D mode: ${viewManager2DMode}`, "info");
 
-      if (appStateMode === "2D" && viewManager2DMode === true) {
-        this.log(
-          "✅ State consistency: Both systems report 2D mode",
-          "success"
-        );
-      } else if (appStateMode === "3D" && viewManager2DMode === false) {
+      if (appStateMode === "3D") {
         this.log(
           "✅ State consistency: Both systems report 3D mode",
           "success"
         );
       } else {
         this.log(
-          `❌ State inconsistency detected! AppState: ${appStateMode}, ViewManager2D: ${viewManager2DMode}`,
+          `❌ State inconsistency detected! AppState: ${appStateMode},`,
           "error"
         );
       }
@@ -231,13 +220,8 @@ class ViewSwitchingDebugger {
 
       // Check results
       const newAppStateMode = window.appState.getViewMode();
-      const newViewManager2DMode = window.viewManager2D.isIn2DMode();
 
       this.log(`Post-switch AppState mode: ${newAppStateMode}`, "info");
-      this.log(
-        `Post-switch ViewManager2D mode: ${newViewManager2DMode}`,
-        "info"
-      );
 
       // Verify success
       if (newAppStateMode === targetMode) {
@@ -245,16 +229,6 @@ class ViewSwitchingDebugger {
       } else {
         this.log(
           `❌ AppState not updated: expected ${targetMode}, got ${newAppStateMode}`,
-          "error"
-        );
-      }
-
-      const expectedViewManager2DMode = targetMode === "2D";
-      if (newViewManager2DMode === expectedViewManager2DMode) {
-        this.log("✅ ViewManager2D updated correctly", "success");
-      } else {
-        this.log(
-          `❌ ViewManager2D not updated: expected ${expectedViewManager2DMode}, got ${newViewManager2DMode}`,
           "error"
         );
       }
@@ -298,14 +272,6 @@ class ViewSwitchingDebugger {
           viewMode: window.appState.getViewMode(),
           lastActiveVenue: window.appState.getLastActiveVenueId(),
           activeBuildingsCount: window.appState.getAllActiveBuildings().size,
-        },
-        viewManager2D: {
-          isIn2DMode: window.viewManager2D
-            ? window.viewManager2D.isIn2DMode()
-            : null,
-          hasActiveBounds: window.viewManager2D
-            ? !!window.viewManager2D.activeBuildingBounds
-            : null,
         },
         controller: {
           hasContext: window.viewControllerManager
