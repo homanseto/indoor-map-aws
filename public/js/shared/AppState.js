@@ -32,7 +32,9 @@ class AppStateManager {
     // UI state management
     this.lastActiveVenueId = null;
     this.currentViewMode = "3D"; // '2D' | '3D'
+    // Level and display mode selection
     this.selectedLevelId = "ALL";
+    this.kickMode = false; // false: only selected level, true: show with lower levels
     this.isProcessingClick = false;
 
     // Visibility tracking
@@ -214,6 +216,32 @@ class AppStateManager {
     this.selectedLevelId = levelId;
 
     this.emit("selectedLevelChanged", { previous, current: levelId });
+  }
+
+  /**
+   * Get kick mode state
+   * @returns {boolean}
+   */
+  getKickMode() {
+    return this.kickMode;
+  }
+
+  /**
+   * Set kick mode state
+   * @param {boolean} enabled - true: show selected level with lower levels, false: only selected level
+   */
+  setKickMode(enabled) {
+    if (this.kickMode === enabled) return;
+
+    const previous = this.kickMode;
+    this.kickMode = enabled;
+
+    this.emit("kickModeChanged", { previous, current: enabled });
+
+    // Save to persistence
+    if (this.persistenceEnabled) {
+      this.persistState();
+    }
   }
 
   /**
@@ -695,6 +723,7 @@ class AppStateManager {
         lastActiveVenueId: this.lastActiveVenueId,
         currentViewMode: this.currentViewMode,
         selectedLevelId: this.selectedLevelId,
+        kickMode: this.kickMode,
         hiddenVenuePolygons: Array.from(this.hiddenVenuePolygons),
         hiddenMTRPolygons: Array.from(this.hiddenMTRPolygons),
         timestamp: Date.now(),
@@ -731,6 +760,7 @@ class AppStateManager {
       this.lastActiveVenueId = state.lastActiveVenueId || null;
       this.currentViewMode = state.currentViewMode || "3D";
       this.selectedLevelId = state.selectedLevelId || "ALL";
+      this.kickMode = state.kickMode || false;
 
       if (state.hiddenVenuePolygons) {
         this.hiddenVenuePolygons = new Set(state.hiddenVenuePolygons);

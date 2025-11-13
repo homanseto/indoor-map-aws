@@ -36,6 +36,7 @@ export class StateHooks {
       "processingClickChanged",
       "allActiveCleared",
       "unitLabelStateChanged",
+      "kickModeChanged",
     ];
 
     events.forEach((event) => {
@@ -82,6 +83,7 @@ export class StateHooks {
         viewMode: state.getViewMode(),
         isProcessing: state.isClickProcessing(),
         lastActiveVenue: state.getLastActiveVenueId(),
+        kickMode: state.getKickMode(),
       }),
       callback
     );

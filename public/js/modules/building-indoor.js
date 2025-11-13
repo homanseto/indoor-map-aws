@@ -168,12 +168,23 @@ export class BuildingIndoor {
 
   handleViewModeStateChange(uiState) {
     const mode = uiState.viewMode;
+    const kickMode = uiState.kickMode;
 
     if (
       !this.buildingData ||
       !Array.isArray(this.buildingData.levels?.features)
     ) {
       return;
+    }
+
+    // Update kick toggle UI when kickMode changes
+    if (this.kickToggleContainer) {
+      const kickInput = this.kickToggleContainer.querySelector(
+        'input[type="checkbox"]'
+      );
+      if (kickInput && kickInput.checked !== kickMode) {
+        kickInput.checked = kickMode;
+      }
     }
 
     if (mode === "2D") {
@@ -305,7 +316,10 @@ export class BuildingIndoor {
     container.innerHTML = html;
     this.levelBarEl = container.querySelector("#levelSelectionBar");
     this.kickToggleContainer = container.querySelector("#kickToggleContainer");
-    this.kickMode = false; // false: only selected, true: show with lower
+
+    // Remove local kickMode - now managed by AppState (SSOT)
+    // this.kickMode = false; (SSOT violation removed)
+
     // Reset selected level using centralized state management
     appState.setSelectedLevel("ALL");
     this.renderKickToggle();
@@ -322,18 +336,22 @@ export class BuildingIndoor {
     const input = document.createElement("input");
     input.type = "checkbox";
     input.className = "form-check-input me-2";
-    input.checked = this.kickMode;
+    input.checked = appState.getKickMode();
     input.addEventListener("change", () => {
-      this.kickMode = input.checked;
+      // Update centralized state instead of local property
+      appState.setKickMode(input.checked);
       // Do not re-render level buttons, just re-apply filtering for current selection
-      this.filterFeaturesByLevel(appState.getSelectedLevel(), this.kickMode);
+      this.filterFeaturesByLevel(
+        appState.getSelectedLevel(),
+        appState.getKickMode()
+      );
 
       // Notify other components about kick mode change
       document.dispatchEvent(
         new CustomEvent("levelSelectionChanged", {
           detail: {
             levelId: appState.getSelectedLevel(),
-            kickMode: this.kickMode,
+            kickMode: appState.getKickMode(),
             buildingInstance: this,
           },
         })
@@ -392,7 +410,7 @@ export class BuildingIndoor {
       });
     }
     // Filter displayed features by selected level and kickMode
-    this.filterFeaturesByLevel(levelId, this.kickMode);
+    this.filterFeaturesByLevel(levelId, appState.getKickMode());
 
     //// When the user selects a level while in 2D
     if (appState.isIn2DMode()) {
@@ -408,7 +426,7 @@ export class BuildingIndoor {
       new CustomEvent("levelSelectionChanged", {
         detail: {
           levelId: levelId,
-          kickMode: this.kickMode,
+          kickMode: appState.getKickMode(),
           buildingInstance: this,
         },
       })
@@ -504,7 +522,7 @@ export class BuildingIndoor {
   resetLevelBarAndShowAll() {
     // Update centralized state instead of local property
     appState.setSelectedLevel("ALL");
-    this.kickMode = false;
+    appState.setKickMode(false); // Reset kick mode to centralized state
     if (this.levelBarEl) {
       Array.from(this.levelBarEl.children).forEach((btn) => {
         btn.classList.toggle("active", btn.dataset.levelId === "ALL");
