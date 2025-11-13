@@ -23,11 +23,8 @@ import { notificationSystem } from "./ui/NotificationSystem.js";
 import { integrationTester } from "./testing/test-integration.js";
 
 // Legacy global variables (keep for backward compatibility)
-let viewer;
+// viewer removed - now managed by AppState.getViewer()
 let threeDTiles, PNTiles, indoorMTRTiles, indoorNetworkTiles, hikingTiles;
-
-// Deprecated - now managed by AppState, but keeping references for transition
-let activeMTRStations = new Map(); // Map<venueId, MTRIndoor>
 
 // Helper functions to bridge legacy code with new state management
 const getActiveBuildings = () => appState.getAllActiveBuildings();
@@ -114,7 +111,7 @@ const MTRvenuePolygonApi =
 
 async function initDemo() {
   // Reuse Cesium viewer if already created by initCesiumBasemap
-  viewer = window.viewer || null;
+  let viewer = window.viewer || null;
   if (!viewer) {
     viewer = initializeCesiumViewer("cesiumContainer");
     window.viewer = viewer;
@@ -123,11 +120,11 @@ async function initDemo() {
     console.log("[demo-main-server] Reusing existing Cesium viewer.");
   }
 
-  // Initialize centralized state with viewer
+  // Initialize centralized state with viewer (this calls appState.setViewer internally)
   StateActions.initializeApp(viewer);
 
   // Initialize ViewControllerManager for coordinated state management
-  const viewControllerManager = new ViewControllerManager(viewer);
+  const viewControllerManager = new ViewControllerManager(appState.getViewer());
   window.viewControllerManager = viewControllerManager; // Make available globally for debugging
 
   const venueResponseFromServer = await fetch(
@@ -149,7 +146,7 @@ async function initDemo() {
 
   // Initialize sidebar and register with controller
   console.log("[Demo] Initializing sidebar...");
-  const sidebar = initSidebar(viewer);
+  const sidebar = initSidebar(appState.getViewer());
   appState.setMapSidebar(sidebar);
   viewControllerManager.registerSidebar(sidebar);
   window.mapSidebar = sidebar; // Keep for backward compatibility
@@ -216,6 +213,7 @@ async function initDemo() {
   }, 1000);
 }
 async function setupVenueDataSources(venueGeoJson) {
+  const viewer = appState.getViewer();
   const venueDataSource = new Cesium.GeoJsonDataSource("venue_polygon");
   await venueDataSource.load(venueGeoJson, {
     stroke: new Cesium.Color(0.26, 0.52, 0.96, 0.5),
@@ -240,6 +238,7 @@ async function setupVenueDataSources(venueGeoJson) {
 
 function setupWallSelectionOverride() {
   // Override Cesium's default selection behavior to show info for underlying features when clicking walls
+  const viewer = appState.getViewer();
   viewer.cesiumWidget.screenSpaceEventHandler.setInputAction(function (event) {
     // Prevent processing if already being handled using state management
     if (appState.isClickProcessing()) return;
@@ -284,6 +283,7 @@ function setupWallSelectionOverride() {
 }
 
 function setupVenueClickInteraction() {
+  const viewer = appState.getViewer();
   const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
   handler.setInputAction(async (movement) => {
     try {
@@ -661,6 +661,7 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
       }
 
       // Fly to building - try venue entity first, then building units
+      const viewer = appState.getViewer();
       const venueDataSources = viewer.dataSources._dataSources.filter(
         (ds) => ds.name === "venue_polygon"
       );
@@ -718,6 +719,7 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
     }
 
     // Load building data (similar to venue click behavior)
+    const viewer = appState.getViewer();
     const buildingResponse = await fetch(
       `${API_BASE_URL}/api/smo3dm/building_data?venue_id=${encodeURIComponent(
         venueId
@@ -849,8 +851,8 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
     await initDemo();
 
     // Set up global references (maintained for backward compatibility)
-    window.viewer = viewer;
-    viewer.scene.debugShowFramesPerSecond = true;
+    window.viewer = appState.getViewer();
+    window.viewer.scene.debugShowFramesPerSecond = true;
 
     // Export state management for debugging
     window.appState = appState;
