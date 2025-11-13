@@ -7,6 +7,7 @@ import { customizeEntityDisplayInfo } from "../utils/informationBox.js";
 
 export class BuildingIndoor {
   constructor(viewer, buildingData) {
+    this.stateCleanups = [];
     this.viewer = viewer;
     this.buildingData = buildingData;
     this.styles = indoorStyles;
@@ -16,8 +17,42 @@ export class BuildingIndoor {
     this.highlightEntity = null;
 
     // unit-labels
-    this.stateCleanups = [];
     this.unitLabelDataSource = null;
+
+    const viewModeCleanup = StateHooks.useUIState((uiState) => {
+      const mode = uiState.viewMode;
+
+      if (
+        !this.buildingData ||
+        !Array.isArray(this.buildingData.levels?.features)
+      ) {
+        return;
+      }
+
+      if (mode === "2D") {
+        const current = appState.getSelectedLevel();
+        const levels = this.buildingData.levels.features.slice();
+        const highest = levels.sort(
+          (a, b) => b.properties.zValue - a.properties.zValue
+        )[0];
+
+        const effectiveLevel =
+          !current || current === "ALL" ? highest?.id : current;
+
+        if (effectiveLevel && effectiveLevel !== current) {
+          appState.setSelectedLevel(effectiveLevel);
+        }
+
+        appState.setUnitLabelState({
+          active: true,
+          venueId: appState.getLastActiveVenueId(),
+          levelId: effectiveLevel ?? null,
+        });
+      } else {
+        appState.resetUnitLabelState();
+      }
+    });
+    this.stateCleanups.push(viewModeCleanup);
 
     const unitLabelCleanup = StateHooks.useUnitLabelState((labelState) => {
       this.handleUnitLabelStateChange(labelState);

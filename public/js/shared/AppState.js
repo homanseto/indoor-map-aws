@@ -377,13 +377,22 @@ class AppStateManager {
    * @param {'2D'|'3D'} mode
    */
   setViewMode(mode) {
-    if (!["2D", "3D"].includes(mode)) {
-      console.warn("[AppState] Invalid view mode:", mode);
-      return;
-    }
+    if (!["2D", "3D"].includes(mode)) return;
 
     const oldMode = this.currentViewMode;
+    if (oldMode === mode) return;
+
     this.currentViewMode = mode;
+
+    const viewer = this.getViewer();
+    if (viewer) {
+      const scene = viewer.scene;
+      if (mode === "2D" && scene.mode !== Cesium.SceneMode.SCENE2D) {
+        scene.morphTo2D(0); // instantaneous morph
+      } else if (mode === "3D" && scene.mode !== Cesium.SceneMode.SCENE3D) {
+        scene.morphTo3D(0);
+      }
+    }
 
     this.emit("viewModeChanged", { oldMode, newMode: mode });
     this.saveState("setViewMode", { mode });
