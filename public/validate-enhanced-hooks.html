@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Enhanced AppStateHooks Validation</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        line-height: 1.6;
+      }
+      .test-section {
+        background: #f5f5f5;
+        border-left: 4px solid #007acc;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 4px;
+      }
+      .pass {
+        border-left-color: #28a745;
+      }
+      .fail {
+        border-left-color: #dc3545;
+      }
+      .error {
+        border-left-color: #fd7e14;
+      }
+      .status {
+        font-weight: bold;
+        padding: 2px 8px;
+        border-radius: 3px;
+        color: white;
+        margin-right: 10px;
+      }
+      .pass .status {
+        background: #28a745;
+      }
+      .fail .status {
+        background: #dc3545;
+      }
+      .error .status {
+        background: #fd7e14;
+      }
+      pre {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        padding: 15px;
+        border-radius: 5px;
+        overflow-x: auto;
+      }
+      button {
+        background: #007acc;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 5px;
+        font-size: 14px;
+      }
+      button:hover {
+        background: #005a9e;
+      }
+      .console-output {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        padding: 15px;
+        border-radius: 5px;
+        min-height: 200px;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+      }
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin: 20px 0;
+      }
+      .metric-card {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+      .metric-value {
+        font-size: 2em;
+        font-weight: bold;
+        color: #007acc;
+      }
+      .metric-label {
+        color: #666;
+        font-size: 0.9em;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🚀 Enhanced AppStateHooks Validation</h1>
+    <p>
+      Comprehensive testing of the upgraded AppStateHooks with intelligent event
+      detection
+    </p>
+
+    <div class="metrics">
+      <div class="metric-card">
+        <div class="metric-value" id="testsRun">0</div>
+        <div class="metric-label">Tests Run</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="testsPass">0</div>
+        <div class="metric-label">Passed</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="performance">0ms</div>
+        <div class="metric-label">Total Time</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="efficiency">0%</div>
+        <div class="metric-label">Efficiency</div>
+      </div>
+    </div>
+
+    <div style="margin: 20px 0">
+      <button onclick="runQuickValidation()">🏃‍♂️ Quick Validation</button>
+      <button onclick="runFullTests()">🧪 Full Test Suite</button>
+      <button onclick="runPerformanceTests()">⚡ Performance Tests</button>
+      <button onclick="startLiveMonitoring()">📊 Live Monitoring</button>
+      <button onclick="clearConsole()">🧹 Clear Console</button>
+    </div>
+
+    <div id="testResults"></div>
+
+    <h3>📟 Console Output</h3>
+    <div id="consoleOutput" class="console-output">
+      Initializing Enhanced AppStateHooks validation...
+    </div>
+
+    <script type="module">
+      // Import the enhanced modules
+      import "./js/shared/AppState.js";
+      import "./js/shared/AppStateHooks.js";
+
+      let originalConsoleLog, originalConsoleError, originalConsoleWarn;
+      let consoleBuffer = [];
+
+      // Console capture
+      function setupConsoleCapture() {
+        const consoleElement = document.getElementById("consoleOutput");
+
+        originalConsoleLog = console.log;
+        originalConsoleError = console.error;
+        originalConsoleWarn = console.warn;
+
+        function logToDiv(level, ...args) {
+          const message = args
+            .map((arg) =>
+              typeof arg === "object"
+                ? JSON.stringify(arg, null, 2)
+                : String(arg)
+            )
+            .join(" ");
+
+          const timestamp = new Date().toLocaleTimeString();
+          const line = `[${timestamp}] ${level.toUpperCase()}: ${message}\n`;
+
+          consoleBuffer.push(line);
+          if (consoleBuffer.length > 500) consoleBuffer.shift(); // Limit buffer
+
+          consoleElement.textContent = consoleBuffer.join("");
+          consoleElement.scrollTop = consoleElement.scrollHeight;
+        }
+
+        console.log = (...args) => {
+          originalConsoleLog.apply(console, args);
+          logToDiv("info", ...args);
+        };
+
+        console.error = (...args) => {
+          originalConsoleError.apply(console, args);
+          logToDiv("error", ...args);
+        };
+
+        console.warn = (...args) => {
+          originalConsoleWarn.apply(console, args);
+          logToDiv("warn", ...args);
+        };
+      }
+
+      // Quick validation tests
+      window.runQuickValidation = async function () {
+        console.log("🏃‍♂️ Running Quick Validation...\n");
+
+        const tests = [];
+        let passed = 0;
+        const startTime = performance.now();
+
+        try {
+          // Test 1: Basic hook creation
+          console.log("📝 Test 1: Basic hook creation");
+          const cleanup1 = window.StateHooks.useStateSlice(
+            (state) => state.getViewMode(),
+            () => {}
+          );
+          const test1Pass = typeof cleanup1 === "function";
+          cleanup1();
+          tests.push({ name: "Basic Creation", pass: test1Pass });
+          if (test1Pass) passed++;
+          console.log(
+            `   ${test1Pass ? "✅" : "❌"} ${test1Pass ? "PASS" : "FAIL"}\n`
+          );
+
+          // Test 2: Event detection
+          console.log("📝 Test 2: Intelligent event detection");
+          const cleanup2 = window.StateHooks.useStateSlice(
+            (state) => state.getViewMode(),
+            () => {},
+            { debugMode: true }
+          );
+          const hasViewEvent =
+            cleanup2.events && cleanup2.events.includes("viewModeChanged");
+          const noKickEvent =
+            cleanup2.events && !cleanup2.events.includes("kickModeChanged");
+          const test2Pass = hasViewEvent && noKickEvent;
+          cleanup2();
+          tests.push({ name: "Event Detection", pass: test2Pass });
+          if (test2Pass) passed++;
+          console.log(
+            `   Events detected: ${
+              cleanup2.events ? cleanup2.events.join(", ") : "none"
+            }`
+          );
+          console.log(
+            `   ${test2Pass ? "✅" : "❌"} ${test2Pass ? "PASS" : "FAIL"}\n`
+          );
+
+          // Test 3: Convenience methods
+          console.log("📝 Test 3: Convenience methods");
+          const cleanup3a = window.StateHooks.useBuildingState(() => {});
+          const cleanup3b = window.StateHooks.useUIState(() => {});
+          const test3Pass =
+            typeof cleanup3a === "function" && typeof cleanup3b === "function";
+          cleanup3a();
+          cleanup3b();
+          tests.push({ name: "Convenience Methods", pass: test3Pass });
+          if (test3Pass) passed++;
+          console.log(
+            `   ${test3Pass ? "✅" : "❌"} ${test3Pass ? "PASS" : "FAIL"}\n`
+          );
+
+          // Test 4: Development tools
+          console.log("📝 Test 4: Development tools availability");
+          const test4Pass =
+            typeof window.StateDev === "object" &&
+            typeof window.HookDev === "object" &&
+            typeof window.StateDev.analyzeHooks === "function";
+          tests.push({ name: "Development Tools", pass: test4Pass });
+          if (test4Pass) passed++;
+          console.log(
+            `   ${test4Pass ? "✅" : "❌"} ${test4Pass ? "PASS" : "FAIL"}\n`
+          );
+        } catch (error) {
+          console.error("❌ Quick validation error:", error);
+        }
+
+        const endTime = performance.now();
+        const totalTime = endTime - startTime;
+
+        // Update metrics
+        document.getElementById("testsRun").textContent = tests.length;
+        document.getElementById("testsPass").textContent = passed;
+        document.getElementById(
+          "performance"
+        ).textContent = `${totalTime.toFixed(1)}ms`;
+        document.getElementById("efficiency").textContent = `${(
+          (passed / tests.length) *
+          100
+        ).toFixed(1)}%`;
+
+        // Update results display
+        const resultsDiv = document.getElementById("testResults");
+        resultsDiv.innerHTML = tests
+          .map(
+            (test) => `
+                <div class="test-section ${test.pass ? "pass" : "fail"}">
+                    <span class="status">${test.pass ? "PASS" : "FAIL"}</span>
+                    ${test.name}
+                </div>
+            `
+          )
+          .join("");
+
+        console.log(`\n🎯 Quick Validation Summary:`);
+        console.log(`   Tests: ${passed}/${tests.length} passed`);
+        console.log(`   Time: ${totalTime.toFixed(2)}ms`);
+        console.log(
+          `   ${
+            passed === tests.length
+              ? "🎉 All tests passed!"
+              : "⚠️ Some tests failed"
+          }`
+        );
+      };
+
+      // Full test suite
+      window.runFullTests = async function () {
+        console.log("🧪 Running Full Test Suite...\n");
+        if (typeof window.runEnhancedHooksTests === "function") {
+          try {
+            const results = await window.runEnhancedHooksTests();
+            console.log(
+              `\n✨ Full test suite completed: ${results.passed}/${results.total} passed`
+            );
+
+            document.getElementById("testsRun").textContent = results.total;
+            document.getElementById("testsPass").textContent = results.passed;
+            document.getElementById("efficiency").textContent = `${(
+              (results.passed / results.total) *
+              100
+            ).toFixed(1)}%`;
+          } catch (error) {
+            console.error("❌ Full test suite error:", error);
+          }
+        } else {
+          console.log(
+            "⚠️ Full test suite not available. Loading test module..."
+          );
+          try {
+            await import("./js/shared/AppStateHooks.test.js");
+            console.log("✅ Test module loaded. Try again.");
+          } catch (error) {
+            console.error("❌ Failed to load test module:", error);
+          }
+        }
+      };
+
+      // Performance tests
+      window.runPerformanceTests = function () {
+        console.log("⚡ Running Performance Tests...\n");
+        try {
+          window.HookDev.performanceTest();
+          window.HookDev.analyzeEventEfficiency();
+        } catch (error) {
+          console.error("❌ Performance test error:", error);
+        }
+      };
+
+      // Live monitoring
+      window.startLiveMonitoring = function () {
+        console.log("📊 Starting Live Hook Monitoring...\n");
+        try {
+          const monitor = window.HookDev.monitorHooks();
+          console.log("✅ Live monitoring active. Available commands:");
+          console.log("   monitor.logHooks() - Show active hooks");
+          console.log("   monitor.logPerformance() - Show performance metrics");
+          console.log("   monitor.stopMonitoring() - Stop monitoring");
+          window.liveMonitor = monitor;
+
+          // Auto-log every 5 seconds
+          window.monitorInterval = setInterval(() => {
+            if (monitor.getHookCount() > 0) {
+              monitor.logHooks();
+            }
+          }, 5000);
+        } catch (error) {
+          console.error("❌ Live monitoring error:", error);
+        }
+      };
+
+      // Clear console
+      window.clearConsole = function () {
+        consoleBuffer = [];
+        document.getElementById("consoleOutput").textContent =
+          "Console cleared.\n";
+        document.getElementById("testResults").innerHTML = "";
+
+        // Reset metrics
+        document.getElementById("testsRun").textContent = "0";
+        document.getElementById("testsPass").textContent = "0";
+        document.getElementById("performance").textContent = "0ms";
+        document.getElementById("efficiency").textContent = "0%";
+      };
+
+      // Initialize
+      window.addEventListener("load", () => {
+        setupConsoleCapture();
+        console.log("✨ Enhanced AppStateHooks validation ready!");
+        console.log("📋 Available tests:");
+        console.log("   • Quick Validation - Basic functionality tests");
+        console.log("   • Full Test Suite - Comprehensive testing");
+        console.log("   • Performance Tests - Hook efficiency analysis");
+        console.log("   • Live Monitoring - Real-time hook observation\n");
+
+        // Run automatic quick validation
+        setTimeout(runQuickValidation, 1000);
+      });
+    </script>
+  </body>
+</html>

@@ -861,8 +861,11 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
     // Export Z-clipping manager (legacy)
     window.ZClippingManager = ZClippingManager;
 
-    // Development tools
-    if (process?.env?.NODE_ENV === "development") {
+    // Development tools (browser environment check)
+    if (
+      typeof process !== "undefined" &&
+      process?.env?.NODE_ENV === "development"
+    ) {
       StateDev.logState();
       console.log(
         "[Demo] Development tools available: StateDev.monitorStateChanges()"

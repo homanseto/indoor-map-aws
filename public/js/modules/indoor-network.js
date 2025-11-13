@@ -1,12 +1,16 @@
 import { indoorStyles } from "../utils/indoorStyles.js";
 import { customizeEntityDisplayInfo } from "../utils/informationBox.js";
+import { appState } from "../shared/AppState.js";
 
 export class IndoorNetwork {
   constructor(viewer, networkData) {
     this.viewer = viewer;
     this.networkData = networkData;
     this.style = indoorStyles.indoorNetwork;
-    this.networkVisible = true; // Network visibility state (default: visible)
+
+    // Remove local networkVisible - now managed by AppState (SSOT)
+    // this.networkVisible = true; (SSOT violation removed)
+
     this.toggleButtonEl = null; // Reference to the toggle button element
   }
 
@@ -61,7 +65,7 @@ export class IndoorNetwork {
   // Apply Z-value clipping to all building entities (all feature types)
   applyZClipping(maxZ) {
     // If network is manually hidden, don't override with Z-clipping
-    if (!this.networkVisible) {
+    if (!appState.getNetworkVisible()) {
       return;
     }
 
@@ -124,21 +128,21 @@ export class IndoorNetwork {
 
   // Toggle network visibility
   toggleNetworkVisibility() {
-    this.networkVisible = !this.networkVisible;
+    appState.setNetworkVisible(!appState.getNetworkVisible());
     this.updateNetworkVisibility();
     this.updateToggleButton();
   }
 
   // Show network
   showNetwork() {
-    this.networkVisible = true;
+    appState.setNetworkVisible(true);
     this.updateNetworkVisibility();
     this.updateToggleButton();
   }
 
   // Hide network
   hideNetwork() {
-    this.networkVisible = false;
+    appState.setNetworkVisible(false);
     this.updateNetworkVisibility();
     this.updateToggleButton();
   }
@@ -147,7 +151,7 @@ export class IndoorNetwork {
   updateNetworkVisibility() {
     Object.values(this.dataSources || {}).forEach((ds) => {
       ds.entities.values.forEach((entity) => {
-        entity.show = this.networkVisible;
+        entity.show = appState.getNetworkVisible();
       });
     });
   }
@@ -156,7 +160,7 @@ export class IndoorNetwork {
   updateToggleButton() {
     if (!this.toggleButtonEl) return;
 
-    if (this.networkVisible) {
+    if (appState.getNetworkVisible()) {
       this.toggleButtonEl.textContent = "Hide Network";
       this.toggleButtonEl.classList.remove("btn-outline-success");
       this.toggleButtonEl.classList.add("btn-success");

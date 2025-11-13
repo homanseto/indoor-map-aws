@@ -38,6 +38,7 @@ class AppStateManager {
     this.isProcessingClick = false;
 
     // Visibility tracking
+    this.networkVisible = true; // Global network visibility state
     this.hiddenVenuePolygons = new Set();
     this.hiddenMTRPolygons = new Set();
 
@@ -237,6 +238,32 @@ class AppStateManager {
     this.kickMode = enabled;
 
     this.emit("kickModeChanged", { previous, current: enabled });
+
+    // Save to persistence
+    if (this.persistenceEnabled) {
+      this.persistState();
+    }
+  }
+
+  /**
+   * Get network visibility state
+   * @returns {boolean}
+   */
+  getNetworkVisible() {
+    return this.networkVisible;
+  }
+
+  /**
+   * Set network visibility state
+   * @param {boolean} visible - true: show networks, false: hide networks
+   */
+  setNetworkVisible(visible) {
+    if (this.networkVisible === visible) return;
+
+    const previous = this.networkVisible;
+    this.networkVisible = visible;
+
+    this.emit("networkVisibilityChanged", { previous, current: visible });
 
     // Save to persistence
     if (this.persistenceEnabled) {
@@ -724,6 +751,7 @@ class AppStateManager {
         currentViewMode: this.currentViewMode,
         selectedLevelId: this.selectedLevelId,
         kickMode: this.kickMode,
+        networkVisible: this.networkVisible,
         hiddenVenuePolygons: Array.from(this.hiddenVenuePolygons),
         hiddenMTRPolygons: Array.from(this.hiddenMTRPolygons),
         timestamp: Date.now(),
@@ -761,6 +789,8 @@ class AppStateManager {
       this.currentViewMode = state.currentViewMode || "3D";
       this.selectedLevelId = state.selectedLevelId || "ALL";
       this.kickMode = state.kickMode || false;
+      this.networkVisible =
+        state.networkVisible !== undefined ? state.networkVisible : true;
 
       if (state.hiddenVenuePolygons) {
         this.hiddenVenuePolygons = new Set(state.hiddenVenuePolygons);
