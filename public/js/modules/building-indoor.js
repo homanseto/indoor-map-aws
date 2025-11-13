@@ -24,10 +24,10 @@ export class BuildingIndoor {
     });
     this.stateCleanups.push(viewModeCleanup);
 
-    const unitLabelCleanup = StateHooks.useUnitLabelState((labelState) => {
-      this.handleUnitLabelStateChange(labelState);
-    });
-    this.stateCleanups.push(unitLabelCleanup);
+    // const unitLabelCleanup = StateHooks.useUnitLabelState((labelState) => {
+    //   this.handleUnitLabelStateChange(labelState);
+    // });
+    // this.stateCleanups.push(unitLabelCleanup);
 
     // TODO: Initialize Cesium entities based on buildingData, using this.styles as needed
   }
@@ -436,10 +436,16 @@ export class BuildingIndoor {
   // Filter features/entities by level and kickMode
   filterFeaturesByLevel(levelId, kickMode) {
     // If ALL, show everything
+    const is2DMode = appState.isIn2DMode();
     if (levelId === "ALL") {
       Object.values(this.dataSources).forEach((ds) => {
         ds.entities.values.forEach((entity) => {
-          entity.show = true;
+          const featureType = this.getEntityFeatureType(entity);
+          if (is2DMode) {
+            entity.show = !["wall", "door"].includes(featureType);
+          } else {
+            entity.show = true;
+          }
         });
       });
       return;
@@ -485,15 +491,22 @@ export class BuildingIndoor {
         }
 
         // Special handling for walls - they should follow the same level filtering
-        const featureType =
-          entity.properties && entity.properties.feature_type
-            ? entity.properties.feature_type.getValue
-              ? entity.properties.feature_type.getValue()
-              : entity.properties.feature_type
-            : null;
+
+        const featureType = this.getEntityFeatureType(entity);
+        if (is2DMode) {
+          // Hide walls and doors in 2D mode regardless of level
+          if (["wall", "door"].includes(featureType)) {
+            entity.show = false;
+            return;
+          }
+          // For other features, apply level filtering
+          const levelVisible = allowedLevelIds.includes(entityLevelId);
+          entity.show = levelVisible;
+        } else {
+          entity.show = allowedLevelIds.includes(entityLevelId);
+        }
 
         // Show if allowed, hide otherwise
-        entity.show = allowedLevelIds.includes(entityLevelId);
       });
     });
 
@@ -516,6 +529,14 @@ export class BuildingIndoor {
         this.highlightEntity.show = this.selectedEntity.show;
       }
     }
+  }
+
+  // Helper method to safely get feature type from entity
+  getEntityFeatureType(entity) {
+    if (!entity.properties) return null;
+
+    const featureType = entity.properties.feature_type;
+    return featureType?.getValue ? featureType.getValue() : featureType;
   }
 
   // Reset the level bar and show all entities (ALL mode) for this building

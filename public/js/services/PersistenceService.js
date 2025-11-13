@@ -28,8 +28,8 @@ export class PersistenceService {
    * Initialize persistence service
    */
   init() {
-    this.setupAutoSave();
-    this.loadPersistedState();
+    // this.setupAutoSave();
+    // this.loadPersistedState();
     console.log(
       "[PersistenceService] Initialized with auto-save and state restoration"
     );
@@ -64,18 +64,17 @@ export class PersistenceService {
    * Save view mode to localStorage
    */
   saveViewMode(viewMode) {
-    try {
-      const data = {
-        mode: viewMode,
-        timestamp: Date.now(),
-        expiration: Date.now() + this.defaultExpiration,
-      };
-
-      localStorage.setItem(this.keys.viewMode, JSON.stringify(data));
-      console.log(`[PersistenceService] View mode saved: ${viewMode}`);
-    } catch (error) {
-      console.warn("[PersistenceService] Failed to save view mode:", error);
-    }
+    // try {
+    //   const data = {
+    //     mode: viewMode,
+    //     timestamp: Date.now(),
+    //     expiration: Date.now() + this.defaultExpiration,
+    //   };
+    //   localStorage.setItem(this.keys.viewMode, JSON.stringify(data));
+    //   console.log(`[PersistenceService] View mode saved: ${viewMode}`);
+    // } catch (error) {
+    //   console.warn("[PersistenceService] Failed to save view mode:", error);
+    // }
   }
 
   /**
@@ -103,21 +102,20 @@ export class PersistenceService {
    * Save sidebar state to localStorage
    */
   saveSidebarState(isVisible, width) {
-    try {
-      const data = {
-        isVisible: isVisible,
-        width: width,
-        timestamp: Date.now(),
-        expiration: Date.now() + this.defaultExpiration,
-      };
-
-      localStorage.setItem(this.keys.sidebarState, JSON.stringify(data));
-      console.log(
-        `[PersistenceService] Sidebar state saved: visible=${isVisible}, width=${width}`
-      );
-    } catch (error) {
-      console.warn("[PersistenceService] Failed to save sidebar state:", error);
-    }
+    // try {
+    //   const data = {
+    //     isVisible: isVisible,
+    //     width: width,
+    //     timestamp: Date.now(),
+    //     expiration: Date.now() + this.defaultExpiration,
+    //   };
+    //   localStorage.setItem(this.keys.sidebarState, JSON.stringify(data));
+    //   console.log(
+    //     `[PersistenceService] Sidebar state saved: visible=${isVisible}, width=${width}`
+    //   );
+    // } catch (error) {
+    //   console.warn("[PersistenceService] Failed to save sidebar state:", error);
+    // }
   }
 
   /**

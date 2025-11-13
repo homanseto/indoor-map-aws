@@ -61,8 +61,8 @@ class AppStateManager {
     // unit labels
     this.unitLabelState = { active: false, venueId: null, levelId: null };
 
-    // Initialize
-    this.init();
+    // // Initialize
+    // this.init();
   }
 
   /**
@@ -239,10 +239,10 @@ class AppStateManager {
 
     this.emit("kickModeChanged", { previous, current: enabled });
 
-    // Save to persistence
-    if (this.persistenceEnabled) {
-      this.persistState();
-    }
+    // // Save to persistence
+    // if (this.persistenceEnabled) {
+    //   this.persistState();
+    // }
   }
 
   /**
@@ -265,10 +265,10 @@ class AppStateManager {
 
     this.emit("networkVisibilityChanged", { previous, current: visible });
 
-    // Save to persistence
-    if (this.persistenceEnabled) {
-      this.persistState();
-    }
+    // // Save to persistence
+    // if (this.persistenceEnabled) {
+    //   this.persistState();
+    // }
   }
 
   /**
