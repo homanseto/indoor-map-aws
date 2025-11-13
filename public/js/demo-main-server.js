@@ -99,15 +99,24 @@ const MTRvenuePolygonApi =
   "https://mapapi.hkmapservice.gov.hk/ogc/wfs/indoor/mtr_venue_polygon";
 
 async function initDemo() {
-  // Reuse Cesium viewer if already created by initCesiumBasemap
-  let viewer = window.viewer || null;
+  // Use AppState as single source of truth for viewer
+  let viewer = appState.getViewer();
+
   if (!viewer) {
+    // Create new viewer if none exists in AppState
     viewer = initializeCesiumViewer("cesiumContainer");
-    window.viewer = viewer;
-    console.log("[demo-main-server] Created new Cesium viewer.");
+    appState.setViewer(viewer);
+    console.log(
+      "[demo-main-server] Created new Cesium viewer and set in AppState."
+    );
   } else {
-    console.log("[demo-main-server] Reusing existing Cesium viewer.");
+    console.log(
+      "[demo-main-server] Reusing existing Cesium viewer from AppState."
+    );
   }
+
+  // Maintain backward compatibility with window.viewer
+  window.viewer = viewer;
 
   // Initialize centralized state with viewer (this calls appState.setViewer internally)
   StateActions.initializeApp(viewer);

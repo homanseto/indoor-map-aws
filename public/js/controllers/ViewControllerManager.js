@@ -17,13 +17,8 @@ export class ViewControllerManager {
     this.viewer = viewer;
     this.sidebar = null;
 
-    // Building context
-    this.currentBuilding = null;
-    this.currentVenueId = null;
-
     // State hook cleanup functions
     this.stateCleanups = [];
-    this.currentViewMode = appState.getViewMode();
 
     this.init();
   }
@@ -77,28 +72,29 @@ export class ViewControllerManager {
    * This is where state changes get translated to actual view operations
    */
   handleViewModeChange(newViewMode) {
+    const currentVenueId = appState.getLastActiveVenueId();
+    const currentBuilding = currentVenueId
+      ? appState.getActiveBuilding(currentVenueId)
+      : null;
+
     console.log(`[ViewControllerManager] 📊 Current state before change:`, {
-      currentBuilding: !!this.currentBuilding,
-      currentVenueId: this.currentVenueId,
+      currentBuilding: !!currentBuilding,
+      currentVenueId: currentVenueId,
       appStateMode: appState.getViewMode(),
     });
-    if (this.currentViewMode === newViewMode) {
+    if (appState.getViewMode() === newViewMode) {
       return; // no change; skip re-entering 2D
     }
-    this.currentViewMode = newViewMode;
 
     // Check if we have the required building context for 2D mode
     if (newViewMode === "2D") {
-      // First, refresh building references to ensure we have latest data
-      this.refreshBuildingReferences();
-
-      if (!this.currentBuilding || !this.currentVenueId) {
+      if (!currentBuilding || !currentVenueId) {
         console.warn(
-          "[ViewControllerManager] ⚠️ No building context for 2D mode after refresh"
+          "[ViewControllerManager] ⚠️ No building context for 2D mode"
         );
         console.log("[ViewControllerManager] 🏢 Building context details:", {
-          hasBuilding: !!this.currentBuilding,
-          venueId: this.currentVenueId,
+          hasBuilding: !!currentBuilding,
+          venueId: currentVenueId,
           allActiveBuildings: appState.getAllActiveBuildings().size,
           lastActiveVenue: appState.getLastActiveVenueId(),
           availableVenues: Array.from(appState.getAllActiveBuildings().keys()),
@@ -125,17 +121,22 @@ export class ViewControllerManager {
   handleBuildingContextChange(buildingState) {
     const { activeBuildings, lastActiveVenueId } = buildingState;
 
+    const previousVenueId = appState.getLastActiveVenueId();
+    const previousBuilding = previousVenueId
+      ? appState.getActiveBuilding(previousVenueId)
+      : null;
+
     console.log(`[ViewControllerManager] 🏢 Building context change:`, {
       lastActiveVenueId,
       activeBuildingsCount: activeBuildings.size,
-      previousBuilding: !!this.currentBuilding,
-      previousVenueId: this.currentVenueId,
+      previousBuilding: !!previousBuilding,
+      previousVenueId: previousVenueId,
     });
 
     if (lastActiveVenueId && activeBuildings.has(lastActiveVenueId)) {
-      // Update current building context
-      this.currentBuilding = activeBuildings.get(lastActiveVenueId);
-      this.currentVenueId = lastActiveVenueId;
+      // Building context is managed by AppState, no local caching needed
+      const currentBuilding = appState.getActiveBuilding(lastActiveVenueId);
+      const currentVenueId = appState.getLastActiveVenueId();
 
       console.log(
         `[ViewControllerManager] ✅ Building context updated: ${lastActiveVenueId}`
@@ -143,10 +144,7 @@ export class ViewControllerManager {
 
       // Notify sidebar about building availability
       if (this.sidebar) {
-        this.sidebar.setBuildingContext(
-          this.currentBuilding,
-          this.currentVenueId
-        );
+        this.sidebar.setBuildingContext(currentBuilding, currentVenueId);
       }
     } else {
       // Clear building context
@@ -170,14 +168,12 @@ export class ViewControllerManager {
     });
 
     if (lastActiveVenueId && activeBuildings.has(lastActiveVenueId)) {
-      this.currentBuilding = activeBuildings.get(lastActiveVenueId);
-      this.currentVenueId = lastActiveVenueId;
+      // Building references are managed by AppState, no local caching needed
       console.log(
-        `[ViewControllerManager] ✅ Building references refreshed: ${lastActiveVenueId}`
+        `[ViewControllerManager] ✅ Building references available: ${lastActiveVenueId}`
       );
     } else {
-      this.currentBuilding = null;
-      this.currentVenueId = null;
+      // No local state to clear, AppState manages everything
       console.log(`[ViewControllerManager] ⚠️ No active building found`);
     }
   }
@@ -205,8 +201,7 @@ export class ViewControllerManager {
       appState.setViewMode("3D");
     }
 
-    this.currentBuilding = null;
-    this.currentVenueId = null;
+    // Building context is managed by AppState, no local caching needed
 
     // Notify sidebar
     if (this.sidebar) {
@@ -220,10 +215,7 @@ export class ViewControllerManager {
   setBuildingContext(building, venueId) {
     console.log(`[ViewControllerManager] Setting building context: ${venueId}`);
 
-    this.currentBuilding = building;
-    this.currentVenueId = venueId;
-
-    // Update AppState
+    // Update AppState - this is the single source of truth
     appState.setActiveBuilding(venueId, building);
     appState.setLastActiveVenueId(venueId);
 
@@ -254,12 +246,17 @@ export class ViewControllerManager {
     console.log(
       `[ViewControllerManager] 🔄 Force syncing with state: ${currentMode}`
     );
+    const currentVenueId = appState.getLastActiveVenueId();
+    const currentBuilding = currentVenueId
+      ? appState.getActiveBuilding(currentVenueId)
+      : null;
+
     console.log(
       `[ViewControllerManager] 📊 Current system state before sync:`,
       {
         appStateMode: appState.getViewMode(),
-        hasBuilding: !!this.currentBuilding,
-        venueId: this.currentVenueId,
+        hasBuilding: !!currentBuilding,
+        venueId: currentVenueId,
         activeBuildingsCount: appState.getAllActiveBuildings().size,
       }
     );
@@ -272,10 +269,13 @@ export class ViewControllerManager {
    * Get current building context for external use
    */
   getCurrentBuildingContext() {
+    const venueId = appState.getLastActiveVenueId();
+    const building = venueId ? appState.getActiveBuilding(venueId) : null;
+
     return {
-      building: this.currentBuilding,
-      venueId: this.currentVenueId,
-      hasContext: !!(this.currentBuilding && this.currentVenueId),
+      building: building,
+      venueId: venueId,
+      hasContext: !!(building && venueId),
     };
   }
 
@@ -283,16 +283,17 @@ export class ViewControllerManager {
    * Get current building name for notifications
    */
   getBuildingName() {
-    if (!this.currentVenueId) return "";
+    const currentVenueId = appState.getLastActiveVenueId();
+    if (!currentVenueId) return "";
 
     // Try to get building name from venue data
-    const venue = appState.findVenueById(this.currentVenueId);
+    const venue = appState.findVenueById(currentVenueId);
     if (venue && venue.properties && venue.properties.name) {
       return venue.properties.name;
     }
 
     // Fallback to venue ID
-    return this.currentVenueId;
+    return currentVenueId;
   }
 
   /**
