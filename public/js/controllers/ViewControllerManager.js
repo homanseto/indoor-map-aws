@@ -115,12 +115,7 @@ export class ViewControllerManager {
       console.log(
         "[ViewControllerManager] ✅ Building context available after refresh, entering 2D mode"
       );
-      // Execute 2D mode transition
-      this.enter2DMode();
     } else if (newViewMode === "3D") {
-      console.log("[ViewControllerManager] ✅ Exiting to 3D mode");
-      // Execute 3D mode transition
-      this.exit2DMode();
     }
   }
 

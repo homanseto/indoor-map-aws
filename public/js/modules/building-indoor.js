@@ -20,37 +20,7 @@ export class BuildingIndoor {
     this.unitLabelDataSource = null;
 
     const viewModeCleanup = StateHooks.useUIState((uiState) => {
-      const mode = uiState.viewMode;
-
-      if (
-        !this.buildingData ||
-        !Array.isArray(this.buildingData.levels?.features)
-      ) {
-        return;
-      }
-
-      if (mode === "2D") {
-        const current = appState.getSelectedLevel();
-        const levels = this.buildingData.levels.features.slice();
-        const highest = levels.sort(
-          (a, b) => b.properties.zValue - a.properties.zValue
-        )[0];
-
-        const effectiveLevel =
-          !current || current === "ALL" ? highest?.id : current;
-
-        if (effectiveLevel && effectiveLevel !== current) {
-          appState.setSelectedLevel(effectiveLevel);
-        }
-
-        appState.setUnitLabelState({
-          active: true,
-          venueId: appState.getLastActiveVenueId(),
-          levelId: effectiveLevel ?? null,
-        });
-      } else {
-        appState.resetUnitLabelState();
-      }
+      this.handleViewModeStateChange(uiState);
     });
     this.stateCleanups.push(viewModeCleanup);
 
@@ -195,6 +165,41 @@ export class BuildingIndoor {
       this.unitLabelDataSource = null;
     }
   }
+
+  handleViewModeStateChange(uiState) {
+    const mode = uiState.viewMode;
+
+    if (
+      !this.buildingData ||
+      !Array.isArray(this.buildingData.levels?.features)
+    ) {
+      return;
+    }
+
+    if (mode === "2D") {
+      const current = appState.getSelectedLevel();
+      const levels = this.buildingData.levels.features.slice();
+      const highest = levels.sort(
+        (a, b) => b.properties.zValue - a.properties.zValue
+      )[0];
+
+      const effectiveLevel =
+        !current || current === "ALL" ? highest?.id : current;
+
+      if (effectiveLevel && effectiveLevel !== current) {
+        appState.setSelectedLevel(effectiveLevel);
+      }
+
+      appState.setUnitLabelState({
+        active: true,
+        venueId: appState.getLastActiveVenueId(),
+        levelId: effectiveLevel ?? null,
+      });
+    } else {
+      appState.resetUnitLabelState();
+    }
+  }
+
   handleUnitLabelStateChange(labelState) {
     const activeBuilding = appState.getActiveBuilding(labelState.venueId);
     if (activeBuilding !== this) {
