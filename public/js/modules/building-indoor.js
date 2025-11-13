@@ -306,7 +306,8 @@ export class BuildingIndoor {
     this.levelBarEl = container.querySelector("#levelSelectionBar");
     this.kickToggleContainer = container.querySelector("#kickToggleContainer");
     this.kickMode = false; // false: only selected, true: show with lower
-    this.selectedLevelId = null; // Reset selected level on new building
+    // Reset selected level using centralized state management
+    appState.setSelectedLevel("ALL");
     this.renderKickToggle();
     this.renderLevelButtons();
   }
@@ -325,13 +326,13 @@ export class BuildingIndoor {
     input.addEventListener("change", () => {
       this.kickMode = input.checked;
       // Do not re-render level buttons, just re-apply filtering for current selection
-      this.filterFeaturesByLevel(this.selectedLevelId, this.kickMode);
+      this.filterFeaturesByLevel(appState.getSelectedLevel(), this.kickMode);
 
       // Notify other components about kick mode change
       document.dispatchEvent(
         new CustomEvent("levelSelectionChanged", {
           detail: {
-            levelId: this.selectedLevelId,
+            levelId: appState.getSelectedLevel(),
             kickMode: this.kickMode,
             buildingInstance: this,
           },
@@ -372,16 +373,17 @@ export class BuildingIndoor {
       this.levelBarEl.appendChild(btn);
     });
     // By default, select ALL when bar is first created or building is loaded
-    if (!this.selectedLevelId || this.selectedLevelId === "ALL") {
+    const currentSelectedLevel = appState.getSelectedLevel();
+    if (!currentSelectedLevel || currentSelectedLevel === "ALL") {
       this.handleLevelSelect("ALL");
     } else {
-      this.handleLevelSelect(this.selectedLevelId);
+      this.handleLevelSelect(currentSelectedLevel);
     }
   }
 
   // Handle level selection event
   handleLevelSelect(levelId) {
-    this.selectedLevelId = levelId;
+    // Update centralized state instead of local property
     appState.setSelectedLevel(levelId);
     // Highlight selected button
     if (this.levelBarEl) {
@@ -500,7 +502,8 @@ export class BuildingIndoor {
 
   // Reset the level bar and show all entities (ALL mode) for this building
   resetLevelBarAndShowAll() {
-    this.selectedLevelId = "ALL";
+    // Update centralized state instead of local property
+    appState.setSelectedLevel("ALL");
     this.kickMode = false;
     if (this.levelBarEl) {
       Array.from(this.levelBarEl.children).forEach((btn) => {

@@ -26,13 +26,6 @@ import { integrationTester } from "./testing/test-integration.js";
 // viewer removed - now managed by AppState.getViewer()
 let threeDTiles, PNTiles, indoorMTRTiles, indoorNetworkTiles, hikingTiles;
 
-// Helper functions to bridge legacy code with new state management
-const getActiveBuildings = () => appState.getAllActiveBuildings();
-const getActiveNetworks = () => appState.getAllActiveNetworks();
-const getGlobalVenueGeoJson = () => appState.getVenueGeoJson();
-const isProcessingClick = () => appState.isClickProcessing();
-const getLastActiveVenueId = () => appState.getLastActiveVenueId();
-
 // Generic handler for selecting any indoor feature (unit, window, opening, amenity, occupant)
 function handleIndoorFeatureClick(selectedEntity) {
   // Try to get venue_id from entity properties
@@ -93,10 +86,6 @@ function handleIndoorFeatureClick(selectedEntity) {
   // Set as new active venue
   appState.setLastActiveVenueId(venueId);
 }
-
-// // Building Network Management
-// let activeBuildingNetworks = new Map(); // Map<venueId, {dataSource, data, loading}>
-// let buildingNetworkCache = new Map(); // Map<buildingName, networkData>
 
 // Configurable API base URL for backend
 // Use http://localhost:3002 for local debug, "" for production/Docker
