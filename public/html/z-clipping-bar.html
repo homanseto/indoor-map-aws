@@ -1,3 +1,28 @@
+<!-- 3D Buildings Opacity Control -->
+<div class="opacity-control-container">
+  <div class="opacity-control">
+    <div class="control-header">
+      <span class="control-label">3D Buildings Opacity</span>
+      <span class="control-value" id="opacity-value">50%</span>
+    </div>
+    <div class="slider-container">
+      <input
+        type="range"
+        id="opacity-slider"
+        class="z-clipping-slider opacity-slider"
+        min="0"
+        max="100"
+        value="50"
+        step="10"
+      />
+      <div class="slider-track">
+        <div class="slider-fill" id="opacity-fill"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Existing Z-Clipping Control -->
 <div id="zClippingBar" class="z-clipping-bar-container">
   <label for="z-clipping-slider" class="form-label"
     >Building Z-Clipping (m):</label

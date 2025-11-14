@@ -48,13 +48,13 @@ class AppStateManager {
         id: "threeDTiles",
         name: "3D Buildings",
         url: "https://data.map.gov.hk/api/3d-data/3dtiles/f2/tileset.json?key=3967f8f365694e0798af3e7678509421",
-        defaultOpacity: 0.4,
+        defaultOpacity: 0.5,
         defaultVisible: true,
         style: {
           color: {
             evaluateColor: function (feature, result) {
               return Cesium.Color.clone(
-                Cesium.Color.WHITE.withAlpha(0.4),
+                Cesium.Color.WHITE.withAlpha(0.3),
                 result
               );
             },

@@ -12,24 +12,147 @@
   color: #fff;
   font-family: "Segoe UI", Arial, sans-serif;
 }
+
 .z-clipping-bar-container .form-label {
   font-size: 1rem;
   font-weight: 500;
   margin-bottom: 8px;
 }
+
 .z-clipping-bar-container .slider-container {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 6px;
 }
+
 .z-clipping-bar-container input[type="range"] {
   width: 120px;
 }
+
 .z-clipping-bar-container .slider-labels {
   display: flex;
   justify-content: space-between;
   font-size: 0.9em;
   color: #bbb;
   margin-top: 2px;
+}
+
+/* 3D Buildings Opacity Control Container */
+.opacity-control-container {
+  position: absolute;
+  left: 24px;
+  bottom: 140px; /* Position above z-clipping bar */
+  z-index: 1101;
+  background: rgba(30, 30, 40, 0.95);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  padding: 18px 22px 14px 22px;
+  min-width: 220px;
+  color: #fff;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+/* 3D Buildings Opacity Control */
+.opacity-control {
+  /* No extra margins since it's in its own container */
+}
+
+.opacity-control .control-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.opacity-control .control-label {
+  font-size: 12px;
+  color: #ffffff;
+  opacity: 0.9;
+}
+
+.opacity-control .control-value {
+  font-size: 11px;
+  color: #00d4ff;
+  font-weight: 500;
+}
+
+.opacity-control .slider-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+}
+
+/* Opacity Slider Styling */
+.opacity-slider {
+  width: 120px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.opacity-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #00d4ff;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+  cursor: pointer;
+}
+
+.opacity-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #00d4ff;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+  cursor: pointer;
+  border: none;
+}
+
+/* Slider Track and Fill */
+.slider-track {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.slider-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00d4ff, #0099cc);
+  border-radius: 3px;
+  transition: width 0.2s ease;
+  width: 50%; /* Default to 50% */
+}
+
+/* Hide opacity control in 2D mode */
+body.mode-2d .opacity-control-container {
+  display: none;
+}
+
+/* Show opacity control in 3D mode */
+body.mode-3d .opacity-control-container {
+  display: block;
+}
+
+/* Fallback - show by default if no mode class is set */
+.opacity-control-container {
+  display: block;
 }

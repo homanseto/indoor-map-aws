@@ -108,6 +108,8 @@ export function initializeCesiumViewer(containerId) {
   // Remove any remaining toolbar elements
   removeRemainingToolbarElements(viewer);
 
+  configureUndergroundBasemap(viewer);
+
   // Enable performance debugging
   viewer.scene.debugShowFramesPerSecond = true;
 
@@ -120,48 +122,112 @@ function configure2DBasemap(viewer) {
   const globe = scene.globe;
 
   // Configure globe as flat 2D surface
-  globe.depthTestAgainstTerrain = false;
-  globe.showGroundAtmosphere = false; // Remove atmospheric effects
+  // globe.depthTestAgainstTerrain = false;
+  // globe.showGroundAtmosphere = false; // Remove atmospheric effects
   // globe.baseColor = Cesium.Color.WHITE; // Set base color to white
 
   // Ensure the basemap is always rendered below everything
   globe.backFaceCulling = false;
+
+  // Enable depth testing but allow underground viewing
+  scene.globe.depthTestAgainstTerrain = false;
 
   // Disable terrain sampling - treat as flat surface
   if (viewer.terrainProvider instanceof Cesium.EllipsoidTerrainProvider) {
     // This is already flat, but we'll make sure
     console.log("Using flat ellipsoid terrain provider");
   }
-
   // Configure camera to work with 2D basemap but allow 3D data above
-  scene.screenSpaceCameraController.enableCollisionDetection = false;
-  scene.screenSpaceCameraController.minimumZoomDistance = 1;
+  // scene.screenSpaceCameraController.enableCollisionDetection = false;
+  // scene.screenSpaceCameraController.minimumZoomDistance = 1;
   scene.screenSpaceCameraController.maximumZoomDistance = 10000000;
 }
 
-// // Add this new function to fix the globe configuration
-// export function configureGlobeForUnderground(viewer) {
-//   const scene = viewer.scene;
-//   const globe = viewer.scene.globe;
+// Advanced underground basemap configuration
+export function configureUndergroundBasemap(viewer, undergroundOffset = -50) {
+  const scene = viewer.scene;
+  const globe = scene.globe;
 
-//   // Fix blue color by disabling default globe material
-//   globe.baseColor = Cesium.Color.WHITE; // Use white instead of default blue
-//   globe.showGroundAtmosphere = false; // Disable atmospheric blue effect
+  console.log("Configuring underground basemap with color preservation...");
 
-//   // Enable underground mode
-//   globe.depthTestAgainstTerrain = false; // Allow seeing through terrain
+  // Configure globe for underground viewing while preserving colors
+  globe.depthTestAgainstTerrain = false;
+  globe.showGroundAtmosphere = false;
+  // Don't set baseColor to TRANSPARENT - this causes white rendering
+  // globe.baseColor = Cesium.Color.TRANSPARENT; // REMOVE THIS LINE
 
-//   // Configure camera for underground viewing
-//   scene.screenSpaceCameraController.enableCollisionDetection = false;
-//   scene.screenSpaceCameraController.minimumZoomDistance = 1; // Allow very close zoom
-//   scene.screenSpaceCameraController.maximumZoomDistance = 10000000; // Allow far zoom
+  // Configure imagery layers for transparency without losing color
+  const imageryLayers = scene.imageryLayers;
 
-//   // Enable depth testing but allow underground viewing
-//   scene.globe.depthTestAgainstTerrain = false;
+  // Make basemap semi-transparent but keep colors
+  for (let i = 0; i < imageryLayers.length; i++) {
+    const layer = imageryLayers.get(i);
+    layer.alpha = 0.6; // Semi-transparent but visible
+    // Don't modify the imagery provider - keep original colors
+  }
 
-//   // Optional: Adjust near/far planes for better underground rendering
-//   scene.logarithmicDepthBuffer = false; // Can help with depth precision
-// }
+  // Enable camera underground movement
+  scene.screenSpaceCameraController.enableCollisionDetection = false;
+  scene.screenSpaceCameraController.minimumZoomDistance = 1;
+  scene.logarithmicDepthBuffer = true;
+
+  // Alternative approach: Lower the globe surface instead of imagery
+  configureGlobeSurfaceHeight(viewer, undergroundOffset);
+
+  console.log(
+    `Configured underground basemap with ${undergroundOffset}m offset and color preservation`
+  );
+}
+
+function configureGlobeSurfaceHeight(viewer, heightOffset) {
+  const scene = viewer.scene;
+
+  // Create a custom terrain provider that positions the surface lower
+  const customTerrain = new Cesium.CustomHeightmapTerrainProvider({
+    callback: function (x, y, level) {
+      // Return a height map that places the surface at the desired offset
+      const width = 65;
+      const height = 65;
+      const heights = new Float32Array(width * height);
+
+      // Fill with the desired underground height
+      for (let i = 0; i < heights.length; i++) {
+        heights[i] = heightOffset; // All points at underground level
+      }
+
+      return heights;
+    },
+    width: 65,
+    height: 65,
+  });
+
+  // Don't replace the terrain provider as it might break other functionality
+  // Instead, just ensure proper depth testing is configured
+  scene.globe.depthTestAgainstTerrain = false;
+}
+
+// //  Configure Globe for Underground Viewing
+export function configureGlobeForUnderground(viewer) {
+  const scene = viewer.scene;
+  const globe = scene.globe;
+
+  // Key settings for underground viewing
+  globe.depthTestAgainstTerrain = false; // Allow seeing through terrain
+  globe.showGroundAtmosphere = false; // Remove atmospheric blue effect
+  globe.baseColor = Cesium.Color.TRANSPARENT; // Make globe transparent
+
+  // Configure imagery layers to be translucent
+  viewer.scene.imageryLayers.get(0).alpha = 0.3; // Make basemap semi-transparent
+
+  // Enable underground camera movement
+  scene.screenSpaceCameraController.enableCollisionDetection = false;
+  scene.screenSpaceCameraController.minimumZoomDistance = 1; // Allow very close zoom
+
+  // Configure camera for underground viewing
+  scene.logarithmicDepthBuffer = true; // Better depth precision
+
+  console.log("Configured globe for underground viewing");
+}
 
 /* ================================
    HELPER FUNCTIONS

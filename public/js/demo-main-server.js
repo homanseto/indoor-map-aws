@@ -1,8 +1,9 @@
 import { initializeCesiumViewer } from "./cesium-config.js";
 import { BuildingIndoor } from "./modules/building-indoor.js";
 import { IndoorNetwork } from "./modules/indoor-network.js";
-import { ZClippingManager } from "./utils/zClippingManager.js";
+import { OpacityControl, ZClippingManager } from "./utils/zClippingManager.js";
 import { initSidebar } from "./ui/sidebar.js";
+import { createTilesManager } from "./modules/tileManager.js";
 
 // Centralized State Management
 import { appState } from "./shared/AppState.js";
@@ -152,6 +153,23 @@ async function initDemo() {
     "[Demo] Sidebar initialized, stored in state, and registered with controller"
   );
 
+  // Initialize TilesManager
+  console.log("Initializing TilesManager...");
+  const tilesManager = createTilesManager(viewer);
+
+  // Make it globally available for testing
+  window.tilesManager = tilesManager;
+  console.log("TilesManager initialized and available globally");
+  tilesManager
+    .loadTileset("threeDTiles")
+    .then((tileset) => {
+      console.log("✅ threeDTiles loaded successfully:", tileset.url);
+      console.log("Tileset visible:", tileset.show);
+    })
+    .catch((error) => {
+      console.error("❌ Failed to load threeDTiles:", error);
+    });
+
   // Inject Z-clipping bar HTML
   const zClippingBarContainer = document.getElementById(
     "zClippingBarContainer"
@@ -161,6 +179,12 @@ async function initDemo() {
     const html = await resp.text();
     zClippingBarContainer.innerHTML = html;
   }
+
+  // Add this new block:
+  // Initialize OpacityControl after HTML is injected
+  setTimeout(() => {
+    OpacityControl.initOpacityControl();
+  }, 100); // Small delay to ensure HTML is loaded
 
   // Setup wall selection override to prevent wall info boxes
   setupWallSelectionOverride();
@@ -299,7 +323,31 @@ function setupVenueClickInteraction() {
         });
         return;
       }
-      const featureTypeList = pickedFeatures.map(
+      // Filter out 3D tileset features that don't have the expected structure
+      const validFeatures = pickedFeatures.filter((feature) => {
+        // Check if it's a 3D tileset feature
+        if (feature.primitive instanceof Cesium.Cesium3DTileset) {
+          const tilesetUrl = feature.primitive._url;
+          if (
+            tilesetUrl &&
+            tilesetUrl ===
+              "https://data.map.gov.hk/api/3d-data/3dtiles/f2/tileset.json?key=3967f8f365694e0798af3e7678509421"
+          ) {
+            return false; // Skip only threeDTiles
+          }
+          // Allow other tilesets to be picked
+          return true;
+        }
+
+        // Check if it has the expected GeoJSON structure
+        return (
+          feature.id &&
+          feature.id.properties &&
+          feature.id.properties.feature_type
+        );
+      });
+
+      const featureTypeList = validFeatures.map(
         (f) => f.id.properties.feature_type
       );
       console.log(featureTypeList);

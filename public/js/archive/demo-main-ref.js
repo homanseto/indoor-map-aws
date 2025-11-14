@@ -20,6 +20,7 @@
 import { initializeCesiumViewer } from "../cesium-config.js";
 import { VenueIndoor } from "./venue-indoor.js";
 import { MTRIndoor } from "./mtr-indoor.js";
+// import { OpacityControl } from "../utils/zClippingManager.js";
 
 // Global variables for demo management
 let viewer;

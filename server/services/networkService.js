@@ -282,12 +282,14 @@ export class NetworkService {
   async insertFeatureBatch(features, networkData) {
     const client = await pool.connect();
 
+    let errFeature = {};
     try {
       await client.query("BEGIN");
 
       const insertedRecords = [];
 
       for (const feature of features) {
+        errFeature = feature;
         const record = this.transformFeatureToRecord(feature, networkData);
         const result = await this.insertSingleRecord(client, record);
         insertedRecords.push(result);
@@ -301,6 +303,7 @@ export class NetworkService {
       };
     } catch (error) {
       await client.query("ROLLBACK");
+      console.log(errFeature);
       throw error;
     } finally {
       client.release();
