@@ -186,20 +186,23 @@ export class BuildingIndoor {
         kickInput.checked = kickMode;
       }
     }
+    const current = appState.getSelectedLevel();
 
     if (mode === "2D") {
-      const current = appState.getSelectedLevel();
       const levels = this.buildingData.levels.features.slice();
       const highest = levels.sort(
         (a, b) => b.properties.zValue - a.properties.zValue
       )[0];
-
       const effectiveLevel =
         !current || current === "ALL" ? highest?.id : current;
 
       if (effectiveLevel && effectiveLevel !== current) {
         appState.setSelectedLevel(effectiveLevel);
+        this.handleLevelSelect(effectiveLevel);
       }
+
+      // ✅ FIX: Always apply filtering when switching to 2D mode
+      this.filterFeaturesByLevel(effectiveLevel || "ALL", kickMode);
 
       appState.setUnitLabelState({
         active: true,
@@ -207,6 +210,8 @@ export class BuildingIndoor {
         levelId: effectiveLevel ?? null,
       });
     } else {
+      // ✅ FIX: Always apply filtering when switching to 2D mode
+      this.filterFeaturesByLevel(current, kickMode);
       appState.resetUnitLabelState();
     }
   }
@@ -503,6 +508,9 @@ export class BuildingIndoor {
           const levelVisible = allowedLevelIds.includes(entityLevelId);
           entity.show = levelVisible;
         } else {
+          if (["wall", "door"].includes(featureType)) {
+            console.log(entity);
+          }
           entity.show = allowedLevelIds.includes(entityLevelId);
         }
 

@@ -37,6 +37,79 @@ class AppStateManager {
     this.kickMode = false; // false: only selected level, true: show with lower levels
     this.isProcessingClick = false;
 
+    // 3D Tiles Management
+    this.activeTilesets = new Map(); // tilesetId → tileset instance mapping
+    this.tilesetConfigs = new Map(); // tilesetId → configuration object
+    this.tilesetStates = new Map(); // tilesetId → { visible, opacity, loading, loaded }
+
+    // 3D Tiles default configurations
+    this.defaultTilesetConfigs = {
+      threeDTiles: {
+        id: "threeDTiles",
+        name: "3D Buildings",
+        url: "https://data.map.gov.hk/api/3d-data/3dtiles/f2/tileset.json?key=3967f8f365694e0798af3e7678509421",
+        defaultOpacity: 0.4,
+        defaultVisible: true,
+        style: {
+          color: {
+            evaluateColor: function (feature, result) {
+              return Cesium.Color.clone(
+                Cesium.Color.WHITE.withAlpha(0.4),
+                result
+              );
+            },
+          },
+        },
+      },
+      // PNTiles: {
+      //   id: 'PNTiles',
+      //   name: '3D Pedestrian Network',
+      //   url: 'http://3dm/dev/bR5B7mxkmjhRhTTroMCo/storage/3dpn/3DPN_v1.0/tileset.json',
+      //   defaultOpacity: 1.0,
+      //   defaultVisible: true,
+      //   style: {
+      //     show: true,
+      //     color: "color('orange')"
+      //   }
+      // },
+      // indoorMTRTiles: {
+      //   id: 'indoorMTRTiles',
+      //   name: 'Indoor MTR Network',
+      //   url: 'http://3dmapweb3:8097/b3dm/indoor_network_mtr_3/output/tileset.json',
+      //   defaultOpacity: 1.0,
+      //   defaultVisible: true,
+      //   style: {
+      //     color: "color('black')"
+      //   }
+      // },
+      // hikingTiles: {
+      //   id: 'hikingTiles',
+      //   name: 'Hiking Routes',
+      //   url: 'http://3dmapweb3:8097/b3dm/hiking_route_2/output/tileset.json',
+      //   defaultOpacity: 1.0,
+      //   defaultVisible: true,
+      //   style: {
+      //     color: {
+      //       evaluateColor: function (feature, result) {
+      //         return Cesium.Color.fromBytes(255, 0, 255, 255, result);
+      //       }
+      //     }
+      //   }
+      // }
+    };
+
+    // Initialize default tileset states
+    Object.values(this.defaultTilesetConfigs).forEach((config) => {
+      this.tilesetStates.set(config.id, {
+        visible: config.defaultVisible,
+        opacity: config.defaultOpacity,
+        loading: false,
+        loaded: false,
+        error: null,
+      });
+      this.tilesetConfigs.set(config.id, { ...config });
+    });
+
     // Visibility tracking
     this.networkVisible = true; // Global network visibility state
     this.hiddenVenuePolygons = new Set();
@@ -324,8 +397,221 @@ class AppStateManager {
   }
 
   // ===========================================
-  // BUILDING MANAGEMENT
+  // 3D TILES MANAGEMENT
   // ===========================================
+
+  /**
+   * Set active tileset
+   * @param {string} tilesetId
+   * @param {Cesium.Cesium3DTileset} tileset
+   */
+  setActiveTileset(tilesetId, tileset) {
+    const oldTileset = this.activeTilesets.get(tilesetId);
+    this.activeTilesets.set(tilesetId, tileset);
+
+    // Update loaded state
+    this.setTilesetLoadingState(tilesetId, false, false);
+
+    this.emit("tilesetAdded", {
+      tilesetId,
+      tileset,
+      oldTileset,
+      config: this.tilesetConfigs.get(tilesetId),
+    });
+    console.log(`[AppState] Tileset ${tilesetId} added and activated`);
+  }
+
+  /**
+   * Remove active tileset
+   * @param {string} tilesetId
+   */
+  removeActiveTileset(tilesetId) {
+    const tileset = this.activeTilesets.get(tilesetId);
+    if (tileset) {
+      this.activeTilesets.delete(tilesetId);
+
+      // Reset state
+      const config = this.tilesetConfigs.get(tilesetId);
+      if (config) {
+        this.tilesetStates.set(tilesetId, {
+          visible: config.defaultVisible,
+          opacity: config.defaultOpacity,
+          loading: false,
+          loaded: false,
+          error: null,
+        });
+      }
+
+      this.emit("tilesetRemoved", { tilesetId, tileset });
+      console.log(`[AppState] Tileset ${tilesetId} removed`);
+    }
+  }
+
+  /**
+   * Get active tileset
+   * @param {string} tilesetId
+   * @returns {Cesium.Cesium3DTileset|null}
+   */
+  getActiveTileset(tilesetId) {
+    return this.activeTilesets.get(tilesetId) || null;
+  }
+
+  /**
+   * Get all active tilesets
+   * @returns {Map<string, Cesium.Cesium3DTileset>}
+   */
+  getAllActiveTilesets() {
+    return this.activeTilesets;
+  }
+
+  /**
+   * Check if tileset is active
+   * @param {string} tilesetId
+   * @returns {boolean}
+   */
+  isTilesetActive(tilesetId) {
+    return this.activeTilesets.has(tilesetId);
+  }
+
+  /**
+   * Set tileset visibility
+   * @param {string} tilesetId
+   * @param {boolean} visible
+   */
+  setTilesetVisible(tilesetId, visible) {
+    const currentState = this.tilesetStates.get(tilesetId);
+    if (!currentState || currentState.visible === visible) return;
+
+    const oldState = { ...currentState };
+    currentState.visible = visible;
+
+    this.emit("tilesetVisibilityChanged", {
+      tilesetId,
+      oldVisible: oldState.visible,
+      newVisible: visible,
+      state: currentState,
+    });
+    this.saveState("setTilesetVisible", { tilesetId, visible });
+  }
+
+  /**
+   * Get tileset visibility
+   * @param {string} tilesetId
+   * @returns {boolean}
+   */
+  getTilesetVisible(tilesetId) {
+    const state = this.tilesetStates.get(tilesetId);
+    return state ? state.visible : false;
+  }
+
+  /**
+   * Set tileset opacity
+   * @param {string} tilesetId
+   * @param {number} opacity - Value between 0.0 and 1.0
+   */
+  setTilesetOpacity(tilesetId, opacity) {
+    const clampedOpacity = Math.max(0, Math.min(1, opacity));
+    const currentState = this.tilesetStates.get(tilesetId);
+    if (!currentState || currentState.opacity === clampedOpacity) return;
+
+    const oldOpacity = currentState.opacity;
+    currentState.opacity = clampedOpacity;
+
+    this.emit("tilesetOpacityChanged", {
+      tilesetId,
+      oldOpacity,
+      newOpacity: clampedOpacity,
+      state: currentState,
+    });
+    this.saveState("setTilesetOpacity", { tilesetId, opacity: clampedOpacity });
+  }
+
+  /**
+   * Get tileset opacity
+   * @param {string} tilesetId
+   * @returns {number}
+   */
+  getTilesetOpacity(tilesetId) {
+    const state = this.tilesetStates.get(tilesetId);
+    return state ? state.opacity : 1.0;
+  }
+
+  /**
+   * Set tileset loading state
+   * @param {string} tilesetId
+   * @param {boolean} loading
+   * @param {boolean} loaded
+   * @param {string|null} error
+   */
+  setTilesetLoadingState(tilesetId, loading, loaded, error = null) {
+    const currentState = this.tilesetStates.get(tilesetId);
+    if (!currentState) return;
+
+    const oldState = { ...currentState };
+    currentState.loading = loading;
+    currentState.loaded = loaded;
+    currentState.error = error;
+
+    this.emit("tilesetLoadingStateChanged", {
+      tilesetId,
+      oldState,
+      newState: currentState,
+    });
+  }
+
+  /**
+   * Get tileset state
+   * @param {string} tilesetId
+   * @returns {Object|null}
+   */
+  getTilesetState(tilesetId) {
+    const state = this.tilesetStates.get(tilesetId);
+    return state ? { ...state } : null;
+  }
+
+  /**
+   * Get tileset configuration
+   * @param {string} tilesetId
+   * @returns {Object|null}
+   */
+  getTilesetConfig(tilesetId) {
+    return this.tilesetConfigs.get(tilesetId) || null;
+  }
+
+  /**
+   * Get all tileset configurations
+   * @returns {Object}
+   */
+  getAllTilesetConfigs() {
+    const configs = {};
+    this.tilesetConfigs.forEach((config, id) => {
+      configs[id] = { ...config };
+    });
+    return configs;
+  }
+
+  /**
+   * Get all tileset states
+   * @returns {Object}
+   */
+  getAllTilesetStates() {
+    const states = {};
+    this.tilesetStates.forEach((state, id) => {
+      states[id] = { ...state };
+    });
+    return states;
+  }
+
+  /**
+   * Clear all active tilesets
+   */
+  clearAllTilesets() {
+    const tilesetIds = Array.from(this.activeTilesets.keys());
+    tilesetIds.forEach((id) => this.removeActiveTileset(id));
+
+    this.emit("allTilesetsCleared", { clearedIds: tilesetIds });
+    console.log("[AppState] All tilesets cleared");
+  }
 
   /**
    * Add or update active building
@@ -389,6 +675,10 @@ class AppStateManager {
   isBuildingActive(venueId) {
     return this.activeBuildings.has(venueId);
   }
+
+  // ===========================================
+  // 3D Tile  MANAGEMENT
+  // ===========================================
 
   // ===========================================
   // NETWORK MANAGEMENT
@@ -754,6 +1044,8 @@ class AppStateManager {
         networkVisible: this.networkVisible,
         hiddenVenuePolygons: Array.from(this.hiddenVenuePolygons),
         hiddenMTRPolygons: Array.from(this.hiddenMTRPolygons),
+        tilesetStates: Object.fromEntries(this.tilesetStates),
+        tilesetConfigs: Object.fromEntries(this.tilesetConfigs),
         timestamp: Date.now(),
       };
 
@@ -797,6 +1089,13 @@ class AppStateManager {
       }
       if (state.hiddenMTRPolygons) {
         this.hiddenMTRPolygons = new Set(state.hiddenMTRPolygons);
+      }
+
+      if (state.tilesetStates) {
+        this.tilesetStates = new Map(Object.entries(state.tilesetStates));
+      }
+      if (state.tilesetConfigs) {
+        this.tilesetConfigs = new Map(Object.entries(state.tilesetConfigs));
       }
 
       console.log("[AppState] Persisted state loaded successfully");
