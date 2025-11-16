@@ -687,7 +687,7 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
       // Reset to ALL levels and re-center view
       const building = appState.getActiveBuilding(venueId);
       if (typeof building.resetLevelBarAndShowAll === "function") {
-        building.resetLevelBarAndShowAll();
+        await building.resetLevelBarAndShowAll();
       }
 
       // Reset network visibility

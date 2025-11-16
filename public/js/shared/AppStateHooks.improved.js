@@ -384,7 +384,10 @@ export class StateActions {
 
     const building = appState.getActiveBuilding(venueId);
     if (building && typeof building.resetLevelBarAndShowAll === "function") {
-      building.resetLevelBarAndShowAll();
+      // Fire and forget - don't await
+      building.resetLevelBarAndShowAll().catch(error => {
+        console.error('Error in resetLevelBarAndShowAll:', error);
+      });
     }
 
     const network = appState.getActiveNetwork(venueId);

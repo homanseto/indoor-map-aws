@@ -20,7 +20,10 @@ export class BuildingIndoor {
     this.unitLabelDataSource = null;
 
     const viewModeCleanup = StateHooks.useUIState((uiState) => {
-      this.handleViewModeStateChange(uiState);
+      // Handle async function with proper error handling
+      this.handleViewModeStateChange(uiState).catch(error => {
+        console.error('Error in handleViewModeStateChange:', error);
+      });
     });
     this.stateCleanups.push(viewModeCleanup);
 
@@ -166,7 +169,7 @@ export class BuildingIndoor {
     }
   }
 
-  handleViewModeStateChange(uiState) {
+  async handleViewModeStateChange(uiState) {
     const mode = uiState.viewMode;
     const kickMode = uiState.kickMode;
 
@@ -198,11 +201,11 @@ export class BuildingIndoor {
 
       if (effectiveLevel && effectiveLevel !== current) {
         appState.setSelectedLevel(effectiveLevel);
-        this.handleLevelSelect(effectiveLevel);
+        await this.handleLevelSelect(effectiveLevel);
       }
 
       // ✅ FIX: Always apply filtering when switching to 2D mode
-      this.filterFeaturesByLevel(effectiveLevel || "ALL", kickMode);
+      await this.filterFeaturesByLevel(effectiveLevel || "ALL", kickMode);
 
       appState.setUnitLabelState({
         active: true,
@@ -211,7 +214,7 @@ export class BuildingIndoor {
       });
     } else {
       // ✅ FIX: Always apply filtering when switching to 2D mode
-      this.filterFeaturesByLevel(current, kickMode);
+      await this.filterFeaturesByLevel(current, kickMode);
       appState.resetUnitLabelState();
     }
   }
@@ -328,7 +331,7 @@ export class BuildingIndoor {
     // Reset selected level using centralized state management
     appState.setSelectedLevel("ALL");
     this.renderKickToggle();
-    this.renderLevelButtons();
+    await this.renderLevelButtons();
   }
 
   // Render the KICK toggle button
@@ -342,11 +345,11 @@ export class BuildingIndoor {
     input.type = "checkbox";
     input.className = "form-check-input me-2";
     input.checked = appState.getKickMode();
-    input.addEventListener("change", () => {
+    input.addEventListener("change", async () => {
       // Update centralized state instead of local property
       appState.setKickMode(input.checked);
       // Do not re-render level buttons, just re-apply filtering for current selection
-      this.filterFeaturesByLevel(
+      await this.filterFeaturesByLevel(
         appState.getSelectedLevel(),
         appState.getKickMode()
       );
@@ -368,7 +371,7 @@ export class BuildingIndoor {
   }
 
   // Render level buttons based on buildingData.levels
-  renderLevelButtons() {
+  async renderLevelButtons() {
     if (!this.levelBarEl) return;
     const levelsRaw =
       this.buildingData.levels &&
@@ -384,7 +387,7 @@ export class BuildingIndoor {
     allBtn.className = "level-btn btn btn-secondary mb-2";
     allBtn.textContent = "ALL";
     allBtn.dataset.levelId = "ALL";
-    allBtn.addEventListener("click", () => this.handleLevelSelect("ALL"));
+    allBtn.addEventListener("click", async () => await this.handleLevelSelect("ALL"));
     this.levelBarEl.appendChild(allBtn);
     // Level buttons
     levels.forEach((level) => {
@@ -392,20 +395,20 @@ export class BuildingIndoor {
       btn.className = "level-btn btn btn-outline-primary mb-2";
       btn.textContent = level.properties.short_name?.en;
       btn.dataset.levelId = level.id;
-      btn.addEventListener("click", () => this.handleLevelSelect(level.id));
+      btn.addEventListener("click", async () => await this.handleLevelSelect(level.id));
       this.levelBarEl.appendChild(btn);
     });
     // By default, select ALL when bar is first created or building is loaded
     const currentSelectedLevel = appState.getSelectedLevel();
     if (!currentSelectedLevel || currentSelectedLevel === "ALL") {
-      this.handleLevelSelect("ALL");
+      await this.handleLevelSelect("ALL");
     } else {
-      this.handleLevelSelect(currentSelectedLevel);
+      await this.handleLevelSelect(currentSelectedLevel);
     }
   }
 
   // Handle level selection event
-  handleLevelSelect(levelId) {
+  async handleLevelSelect(levelId) {
     // Update centralized state instead of local property
     appState.setSelectedLevel(levelId);
     // Highlight selected button
@@ -415,7 +418,7 @@ export class BuildingIndoor {
       });
     }
     // Filter displayed features by selected level and kickMode
-    this.filterFeaturesByLevel(levelId, appState.getKickMode());
+    await this.filterFeaturesByLevel(levelId, appState.getKickMode());
 
     //// When the user selects a level while in 2D
     if (appState.isIn2DMode()) {
@@ -439,7 +442,7 @@ export class BuildingIndoor {
   }
 
   // Filter features/entities by level and kickMode
-  filterFeaturesByLevel(levelId, kickMode) {
+  async filterFeaturesByLevel(levelId, kickMode) {
     // If ALL, show everything
     const is2DMode = appState.isIn2DMode();
     if (levelId === "ALL") {
@@ -518,6 +521,20 @@ export class BuildingIndoor {
       });
     });
 
+    if (is2DMode) {
+      const unitsDataSource = this.dataSources.units;
+      if (unitsDataSource && unitsDataSource.entities.values.length > 0) {
+        try {
+          await this.viewer.flyTo(unitsDataSource.entities.values, {
+            duration: 2.0,
+            offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
+          });
+        } catch (error) {
+          console.error('Error during flyTo operation:', error);
+        }
+      }
+    }
+
     // Handle highlight entities separately - they should always follow their parent
     if (this.highlightEntity) {
       const parentEntityId =
@@ -548,7 +565,7 @@ export class BuildingIndoor {
   }
 
   // Reset the level bar and show all entities (ALL mode) for this building
-  resetLevelBarAndShowAll() {
+  async resetLevelBarAndShowAll() {
     // Update centralized state instead of local property
     appState.setSelectedLevel("ALL");
     appState.setKickMode(false); // Reset kick mode to centralized state
@@ -557,7 +574,7 @@ export class BuildingIndoor {
         btn.classList.toggle("active", btn.dataset.levelId === "ALL");
       });
     }
-    this.filterFeaturesByLevel("ALL", false);
+    await this.filterFeaturesByLevel("ALL", false);
   }
 
   // Clear any existing selection and highlighting
