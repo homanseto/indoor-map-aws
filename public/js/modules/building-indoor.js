@@ -21,8 +21,8 @@ export class BuildingIndoor {
 
     const viewModeCleanup = StateHooks.useUIState((uiState) => {
       // Handle async function with proper error handling
-      this.handleViewModeStateChange(uiState).catch(error => {
-        console.error('Error in handleViewModeStateChange:', error);
+      this.handleViewModeStateChange(uiState).catch((error) => {
+        console.error("Error in handleViewModeStateChange:", error);
       });
     });
     this.stateCleanups.push(viewModeCleanup);
@@ -387,7 +387,10 @@ export class BuildingIndoor {
     allBtn.className = "level-btn btn btn-secondary mb-2";
     allBtn.textContent = "ALL";
     allBtn.dataset.levelId = "ALL";
-    allBtn.addEventListener("click", async () => await this.handleLevelSelect("ALL"));
+    allBtn.addEventListener(
+      "click",
+      async () => await this.handleLevelSelect("ALL")
+    );
     this.levelBarEl.appendChild(allBtn);
     // Level buttons
     levels.forEach((level) => {
@@ -395,7 +398,10 @@ export class BuildingIndoor {
       btn.className = "level-btn btn btn-outline-primary mb-2";
       btn.textContent = level.properties.short_name?.en;
       btn.dataset.levelId = level.id;
-      btn.addEventListener("click", async () => await this.handleLevelSelect(level.id));
+      btn.addEventListener(
+        "click",
+        async () => await this.handleLevelSelect(level.id)
+      );
       this.levelBarEl.appendChild(btn);
     });
     // By default, select ALL when bar is first created or building is loaded
@@ -530,7 +536,7 @@ export class BuildingIndoor {
             offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
           });
         } catch (error) {
-          console.error('Error during flyTo operation:', error);
+          console.error("Error during flyTo operation:", error);
         }
       }
     }

@@ -469,8 +469,8 @@ export class StateActions {
     const building = appState.getActiveBuilding(venueId);
     if (building && typeof building.resetLevelBarAndShowAll === "function") {
       // Fire and forget - don't await
-      building.resetLevelBarAndShowAll().catch(error => {
-        console.error('Error in resetLevelBarAndShowAll:', error);
+      building.resetLevelBarAndShowAll().catch((error) => {
+        console.error("Error in resetLevelBarAndShowAll:", error);
       });
     }
 
