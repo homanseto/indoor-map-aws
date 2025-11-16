@@ -445,7 +445,8 @@ function setupVenueClickInteraction() {
                   // Instantiate BuildingIndoor and use state management
                   const buildingIndoor = new BuildingIndoor(
                     viewer,
-                    buildingData
+                    buildingData,
+                    venueId
                   );
 
                   // Use StateActions for proper loading
@@ -801,7 +802,7 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
     // Load building data
     if (buildingResponse.ok) {
       const buildingData = await buildingResponse.json();
-      const buildingIndoor = new BuildingIndoor(viewer, buildingData);
+      const buildingIndoor = new BuildingIndoor(viewer, buildingData, venueId);
 
       // Use StateActions for proper loading with state management
       StateActions.loadBuilding(venueId, buildingIndoor, indoorNetwork);

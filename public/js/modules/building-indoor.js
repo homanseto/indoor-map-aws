@@ -6,11 +6,12 @@ import { customizeEntityDisplayInfo } from "../utils/informationBox.js";
 // This is a scaffold. You will need to implement methods based on your buildingData structure.
 
 export class BuildingIndoor {
-  constructor(viewer, buildingData) {
+  constructor(viewer, buildingData, venueId) {
     this.stateCleanups = [];
     this.viewer = viewer;
     this.buildingData = buildingData;
     this.styles = indoorStyles;
+    this.venueId = venueId;
 
     // Selection management
     this.selectedEntity = null;
@@ -153,6 +154,10 @@ export class BuildingIndoor {
     }
   }
 
+  getVenueId() {
+    return this.venueId;
+  }
+
   /////unit-labels/////
   ensureUnitLabelDataSource() {
     if (!this.unitLabelDataSource) {
@@ -172,6 +177,15 @@ export class BuildingIndoor {
   async handleViewModeStateChange(uiState) {
     const mode = uiState.viewMode;
     const kickMode = uiState.kickMode;
+    // 🔥 KEY FIX: Only handle view mode changes for the currently active building
+    const currentActiveVenueId = appState.getLastActiveVenueId();
+    const myVenueId = this.getVenueId(); // We need to track this building's venue ID
+    if (!currentActiveVenueId || currentActiveVenueId !== myVenueId) {
+      console.log(
+        `[BuildingIndoor] Ignoring view mode change - not active building. Active: ${currentActiveVenueId}, This: ${myVenueId}`
+      );
+      return; // Don't process view mode changes for inactive buildings
+    }
 
     if (
       !this.buildingData ||
@@ -209,7 +223,7 @@ export class BuildingIndoor {
 
       appState.setUnitLabelState({
         active: true,
-        venueId: appState.getLastActiveVenueId(),
+        venueId: currentActiveVenueId,
         levelId: effectiveLevel ?? null,
       });
     } else {
