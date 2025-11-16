@@ -162,7 +162,7 @@ export function configureUndergroundBasemap(viewer, undergroundOffset = -50) {
   // Make basemap semi-transparent but keep colors
   for (let i = 0; i < imageryLayers.length; i++) {
     const layer = imageryLayers.get(i);
-    layer.alpha = 0.6; // Semi-transparent but visible
+    // layer.alpha = 0.6; // Semi-transparent but visible
     // Don't modify the imagery provider - keep original colors
   }
 
