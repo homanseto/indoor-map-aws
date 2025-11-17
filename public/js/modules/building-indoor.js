@@ -478,23 +478,6 @@ export class BuildingIndoor {
     // Update centralized state instead of local property
     const current = appState.getSelectedLevel();
     appState.setSelectedLevel(levelId);
-    if (current !== levelId) {
-      const unitsDataSource = this.dataSources.units;
-      if (unitsDataSource && unitsDataSource.entities.values.length > 0) {
-        const properties = unitsDataSource.entities.values.filter(
-          (e) => e.properties._level_id._value === levelId
-        );
-        try {
-          await this.viewer.flyTo(properties, {
-            duration: 2.0,
-            offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
-          });
-        } catch (error) {
-          console.error("Error during flyTo operation:", error);
-        }
-      }
-      console.log(unitsDataSource);
-    }
     // Highlight selected button
     if (this.levelBarEl) {
       Array.from(this.levelBarEl.children).forEach((btn) => {
