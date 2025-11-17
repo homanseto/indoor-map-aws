@@ -1,3 +1,4 @@
+import { TwoDLayeringManager } from "../controllers/TwoDLayeringManager.js";
 import { appState } from "../shared/AppState.js";
 import { StateHooks } from "../shared/AppStateHooks.js";
 import { indoorStyles } from "../utils/indoorStyles.js";
@@ -193,6 +194,16 @@ export class BuildingIndoor {
     }
   }
 
+  /**
+   * Initialize 2D Layering Manager
+   */
+  init2DLayeringManager() {
+    if (!this.twoDLayeringManager) {
+      this.twoDLayeringManager = new TwoDLayeringManager(this.viewer, this);
+      console.log("[BuildingIndoor] 2D Layering Manager initialized");
+    }
+  }
+
   async handleViewModeStateChange(uiState) {
     const mode = uiState.viewMode;
     const kickMode = uiState.kickMode;
@@ -218,6 +229,9 @@ export class BuildingIndoor {
       return;
     }
 
+    // Initialize 2D manager if not already done
+    this.init2DLayeringManager();
+
     // Update kick toggle UI when kickMode changes
     if (this.kickToggleContainer) {
       const kickInput = this.kickToggleContainer.querySelector(
@@ -230,6 +244,8 @@ export class BuildingIndoor {
     const current = appState.getSelectedLevel();
 
     if (mode === "2D") {
+      // Apply 2D mode optimizations
+      await this.twoDLayeringManager.apply2DMode();
       const levels = this.buildingData.levels.features.slice();
       const highest = levels.sort(
         (a, b) => b.properties.zValue - a.properties.zValue
@@ -240,17 +256,17 @@ export class BuildingIndoor {
       if (effectiveLevel && effectiveLevel !== current) {
         appState.setSelectedLevel(effectiveLevel);
         await this.handleLevelSelect(effectiveLevel);
-        const unitsDataSource = this.dataSources.units;
-        if (unitsDataSource && unitsDataSource.entities.values.length > 0) {
-          try {
-            await this.viewer.flyTo(unitsDataSource.entities.values, {
-              duration: 2.0,
-              offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
-            });
-          } catch (error) {
-            console.error("Error during flyTo operation:", error);
-          }
-        }
+        // const unitsDataSource = this.dataSources.units;
+        // if (unitsDataSource && unitsDataSource.entities.values.length > 0) {
+        //   try {
+        //     await this.viewer.flyTo(unitsDataSource.entities.values, {
+        //       duration: 2.0,
+        //       offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
+        //     });
+        //   } catch (error) {
+        //     console.error("Error during flyTo operation:", error);
+        //   }
+        // }
       }
 
       // ✅ FIX: Always apply filtering when switching to 2D mode
@@ -261,20 +277,61 @@ export class BuildingIndoor {
         venueId: currentActiveVenueId,
         levelId: effectiveLevel ?? null,
       });
+      // Fly to units with appropriate 2D view
+      await this.flyToUnitsFor2D();
     } else {
+      // Restore 3D mode
+      await this.twoDLayeringManager.restore3DMode();
       // ✅ FIX: Always apply filtering when switching to 2D mode
       await this.filterFeaturesByLevel(current, kickMode);
       appState.resetUnitLabelState();
+
+      // Fly to units with 3D perspective
+      await this.flyToUnitsFor3D();
     }
+    // const unitsDataSource = this.dataSources.units;
+    // if (unitsDataSource && unitsDataSource.entities.values.length > 0) {
+    //   try {
+    //     await this.viewer.flyTo(unitsDataSource.entities.values, {
+    //       duration: 2.0,
+    //       offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
+    //     });
+    //   } catch (error) {
+    //     console.error("Error during flyTo operation:", error);
+    //   }
+    // }
+  }
+
+  /**
+   * Optimized fly-to for 2D mode
+   */
+  async flyToUnitsFor2D() {
+    const unitsDataSource = this.dataSources.units;
+    if (unitsDataSource && unitsDataSource.entities.values.length > 0) {
+      try {
+        await this.viewer.flyTo(unitsDataSource.entities.values, {
+          duration: 1.5,
+          offset: new Cesium.HeadingPitchRange(0, -Math.PI / 2, 0), // Top-down view
+        });
+      } catch (error) {
+        console.error("Error during 2D flyTo operation:", error);
+      }
+    }
+  }
+
+  /**
+   * Optimized fly-to for 3D mode
+   */
+  async flyToUnitsFor3D() {
     const unitsDataSource = this.dataSources.units;
     if (unitsDataSource && unitsDataSource.entities.values.length > 0) {
       try {
         await this.viewer.flyTo(unitsDataSource.entities.values, {
           duration: 2.0,
-          offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
+          offset: new Cesium.HeadingPitchRange(0, -0.5, 100), // 3D perspective
         });
       } catch (error) {
-        console.error("Error during flyTo operation:", error);
+        console.error("Error during 3D flyTo operation:", error);
       }
     }
   }
@@ -748,6 +805,14 @@ export class BuildingIndoor {
   destroy() {
     // Clear any highlights first
     this.clearSelection();
+
+    // Clean up 2D layering manager
+    if (this.twoDLayeringManager) {
+      if (this.twoDLayeringManager.isInitialized) {
+        this.twoDLayeringManager.restore3DMode();
+      }
+      this.twoDLayeringManager = null;
+    }
 
     // Remove all Cesium entities related to this building (including walls)
     if (this.dataSources) {
