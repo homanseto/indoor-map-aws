@@ -20,13 +20,32 @@ export class BuildingIndoor {
     // unit-labels
     this.unitLabelDataSource = null;
 
-    const viewModeCleanup = StateHooks.useUIState((uiState) => {
-      // Handle async function with proper error handling
-      this.handleViewModeStateChange(uiState).catch((error) => {
+    // Create specific subscriptions for only view mode and kick mode changes
+    const viewModeCleanup1 = appState.subscribe("viewModeChanged", (data) => {
+      console.log(
+        `[BuildingIndoor] View mode changed: ${data.oldMode} → ${data.newMode}`
+      );
+      this.handleViewModeStateChange({
+        viewMode: data.newMode,
+        kickMode: appState.getKickMode(),
+      }).catch((error) => {
         console.error("Error in handleViewModeStateChange:", error);
       });
     });
-    this.stateCleanups.push(viewModeCleanup);
+
+    const viewModeCleanup2 = appState.subscribe("kickModeChanged", (data) => {
+      console.log(
+        `[BuildingIndoor] Kick mode changed: ${data.previous} → ${data.current}`
+      );
+      this.handleViewModeStateChange({
+        viewMode: appState.getViewMode(),
+        kickMode: data.current,
+      }).catch((error) => {
+        console.error("Error in handleViewModeStateChange:", error);
+      });
+    });
+    this.stateCleanups.push(viewModeCleanup1);
+    this.stateCleanups.push(viewModeCleanup2);
 
     // const unitLabelCleanup = StateHooks.useUnitLabelState((labelState) => {
     //   this.handleUnitLabelStateChange(labelState);
@@ -177,6 +196,7 @@ export class BuildingIndoor {
   async handleViewModeStateChange(uiState) {
     const mode = uiState.viewMode;
     const kickMode = uiState.kickMode;
+
     // 🔥 KEY FIX: Only handle view mode changes for the currently active building
     const currentActiveVenueId = appState.getLastActiveVenueId();
     const myVenueId = this.getVenueId(); // We need to track this building's venue ID
@@ -186,6 +206,10 @@ export class BuildingIndoor {
       );
       return; // Don't process view mode changes for inactive buildings
     }
+
+    console.log(
+      `[BuildingIndoor] Processing view mode change for active building ${myVenueId}: ${mode}, kick: ${kickMode}`
+    );
 
     if (
       !this.buildingData ||
@@ -216,6 +240,17 @@ export class BuildingIndoor {
       if (effectiveLevel && effectiveLevel !== current) {
         appState.setSelectedLevel(effectiveLevel);
         await this.handleLevelSelect(effectiveLevel);
+        const unitsDataSource = this.dataSources.units;
+        if (unitsDataSource && unitsDataSource.entities.values.length > 0) {
+          try {
+            await this.viewer.flyTo(unitsDataSource.entities.values, {
+              duration: 2.0,
+              offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
+            });
+          } catch (error) {
+            console.error("Error during flyTo operation:", error);
+          }
+        }
       }
 
       // ✅ FIX: Always apply filtering when switching to 2D mode
@@ -230,6 +265,17 @@ export class BuildingIndoor {
       // ✅ FIX: Always apply filtering when switching to 2D mode
       await this.filterFeaturesByLevel(current, kickMode);
       appState.resetUnitLabelState();
+    }
+    const unitsDataSource = this.dataSources.units;
+    if (unitsDataSource && unitsDataSource.entities.values.length > 0) {
+      try {
+        await this.viewer.flyTo(unitsDataSource.entities.values, {
+          duration: 2.0,
+          offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
+        });
+      } catch (error) {
+        console.error("Error during flyTo operation:", error);
+      }
     }
   }
 
@@ -430,7 +476,25 @@ export class BuildingIndoor {
   // Handle level selection event
   async handleLevelSelect(levelId) {
     // Update centralized state instead of local property
+    const current = appState.getSelectedLevel();
     appState.setSelectedLevel(levelId);
+    if (current !== levelId) {
+      const unitsDataSource = this.dataSources.units;
+      if (unitsDataSource && unitsDataSource.entities.values.length > 0) {
+        const properties = unitsDataSource.entities.values.filter(
+          (e) => e.properties._level_id._value === levelId
+        );
+        try {
+          await this.viewer.flyTo(properties, {
+            duration: 2.0,
+            offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
+          });
+        } catch (error) {
+          console.error("Error during flyTo operation:", error);
+        }
+      }
+      console.log(unitsDataSource);
+    }
     // Highlight selected button
     if (this.levelBarEl) {
       Array.from(this.levelBarEl.children).forEach((btn) => {
@@ -540,20 +604,6 @@ export class BuildingIndoor {
         // Show if allowed, hide otherwise
       });
     });
-
-    if (is2DMode) {
-      const unitsDataSource = this.dataSources.units;
-      if (unitsDataSource && unitsDataSource.entities.values.length > 0) {
-        try {
-          await this.viewer.flyTo(unitsDataSource.entities.values, {
-            duration: 2.0,
-            offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
-          });
-        } catch (error) {
-          console.error("Error during flyTo operation:", error);
-        }
-      }
-    }
 
     // Handle highlight entities separately - they should always follow their parent
     if (this.highlightEntity) {
