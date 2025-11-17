@@ -53,9 +53,20 @@ export class BuildingIndoor {
       { debugMode: false, name: `UnitLabelHook_${venueId}` }
     );
 
+    const wallVisibilityCleanup = appState.subscribe(
+      "wallsVisibilityChanged",
+      (data) => {
+        console.log(
+          `[BuildingIndoor] Wall visibility changed: ${data.visible}`
+        );
+        this.handleWallVisibilityChange(data.visible);
+      }
+    );
+
     this.stateCleanups.push(viewModeCleanup1);
     this.stateCleanups.push(viewModeCleanup2);
     this.stateCleanups.push(unitLabelCleanup);
+    this.stateCleanups.push(wallVisibilityCleanup);
 
     // ✅ ADD HERE: Setup camera monitoring for unit labels
     this.setupCameraMonitoringForLabels();
@@ -537,6 +548,23 @@ export class BuildingIndoor {
   }
   //////unit-labels/////
 
+  ///Wall Visibility/////
+  /**
+   * Handle wall visibility state changes
+   * @param {boolean} wallsVisible - New wall visibility state
+   */
+  handleWallVisibilityChange(wallsVisible) {
+    // Re-apply current level filtering with new wall visibility
+    const currentLevel = appState.getSelectedLevel();
+    const currentKickMode = appState.getKickMode();
+
+    console.log(
+      `[BuildingIndoor] Applying wall visibility change (${wallsVisible}) to level ${currentLevel}`
+    );
+    this.filterFeaturesByLevel(currentLevel, currentKickMode);
+  }
+  ///Wall Visibility////
+
   ///Calculation/////
   // Calculate polygon center point //////
   calculatePolygonCenter(coordinates) {
@@ -864,7 +892,7 @@ export class BuildingIndoor {
     input.type = "checkbox";
     input.className = "form-check-input me-2";
     input.checked = appState.getKickMode();
-    if (appState.isIn2DMode) return;
+
     input.addEventListener("change", async () => {
       // Update centralized state instead of local property
       appState.setKickMode(input.checked);
@@ -970,16 +998,24 @@ export class BuildingIndoor {
 
   // Filter features/entities by level and kickMode
   async filterFeaturesByLevel(levelId, kickMode) {
-    // If ALL, show everything
+    // Get current state
     const is2DMode = appState.isIn2DMode();
+    const wallsVisible = appState.getWallsVisible();
+
+    // If ALL, show everything with wall visibility logic
     if (levelId === "ALL") {
       Object.values(this.dataSources).forEach((ds) => {
         ds.entities.values.forEach((entity) => {
           const featureType = this.getEntityFeatureType(entity);
-          if (is2DMode) {
-            entity.show = !["wall", "door"].includes(featureType);
+
+          if (featureType === "wall" || featureType === "door") {
+            // Wall and door visibility: hidden in 2D mode OR when user toggles off
+            entity.show = !is2DMode && wallsVisible;
           } else {
-            entity.show = true;
+            // Other features: follow existing 2D mode logic
+            entity.show = is2DMode
+              ? !["wall", "door"].includes(featureType)
+              : true;
           }
         });
       });
@@ -1025,26 +1061,21 @@ export class BuildingIndoor {
             : entity.properties.level_id;
         }
 
-        // Special handling for walls - they should follow the same level filtering
-
         const featureType = this.getEntityFeatureType(entity);
-        if (is2DMode) {
-          // Hide walls and doors in 2D mode regardless of level
-          if (["wall", "door"].includes(featureType)) {
-            entity.show = false;
-            return;
-          }
-          // For other features, apply level filtering
-          const levelVisible = allowedLevelIds.includes(entityLevelId);
-          entity.show = levelVisible;
-        } else {
-          if (["wall", "door"].includes(featureType)) {
-            console.log(entity);
-          }
-          entity.show = allowedLevelIds.includes(entityLevelId);
-        }
+        const levelVisible = allowedLevelIds.includes(entityLevelId);
 
-        // Show if allowed, hide otherwise
+        if (featureType === "wall" || featureType === "door") {
+          // Wall and door visibility: must be level-visible AND (not in 2D mode) AND user wants walls visible
+          entity.show = levelVisible && !is2DMode && wallsVisible;
+        } else {
+          // Other features: follow level filtering, hide walls/doors in 2D mode
+          if (is2DMode) {
+            entity.show =
+              levelVisible && !["wall", "door"].includes(featureType);
+          } else {
+            entity.show = levelVisible;
+          }
+        }
       });
     });
 

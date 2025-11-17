@@ -27,6 +27,8 @@ export class Sidebar {
     this.content = null;
     this.viewControls = null;
     this.view2DButton = null;
+    this.wallToggleButton = null;
+    this.buildingInstance = null;
 
     // State management hooks
     this.stateCleanups = [];
@@ -144,6 +146,11 @@ export class Sidebar {
     viewSection.appendChild(viewLabel);
     viewSection.appendChild(this.view2DButton);
     viewSection.appendChild(statusIndicator);
+
+    // ✅ ADD WALL TOGGLE BUTTON directly under 2D button
+    this.createWallToggleButton();
+    viewSection.appendChild(this.wallToggleButton);
+
     this.viewControls.appendChild(viewSection);
 
     // Setup event listener for 2D view button (after button is created)
@@ -152,6 +159,61 @@ export class Sidebar {
       e.stopPropagation();
       this.handleViewModeToggle();
     });
+  }
+
+  createWallToggleButton() {
+    // Create wall visibility toggle button
+    this.wallToggleButton = document.createElement("button");
+    this.wallToggleButton.className = "wall-toggle-button";
+    this.wallToggleButton.innerHTML = `
+      <span class="wall-icon">🧱</span>
+      <span class="wall-button-text">Toggle Walls</span>
+    `;
+    this.wallToggleButton.title = "Show/Hide building walls in 3D view";
+
+    // Initially enabled only in 3D mode with building
+    this.updateWallButtonState();
+
+    // Event listener for wall toggle
+    this.wallToggleButton.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      appState.toggleWallsVisible();
+    });
+  }
+
+  updateWallButtonState() {
+    if (!this.wallToggleButton) return;
+
+    const is2DMode = appState.isIn2DMode();
+    const wallsVisible = appState.getWallsVisible();
+    const hasBuilding = this.buildingInstance !== null;
+
+    // Button enabled only in 3D mode with building loaded
+    this.wallToggleButton.disabled = is2DMode || !hasBuilding;
+
+    // Update button appearance based on wall visibility
+    this.wallToggleButton.classList.remove("walls-visible", "walls-hidden");
+    if (wallsVisible) {
+      this.wallToggleButton.classList.add("walls-visible");
+    } else {
+      this.wallToggleButton.classList.add("walls-hidden");
+    }
+
+    // Update button text
+    const buttonText = this.wallToggleButton.querySelector(".wall-button-text");
+    if (is2DMode) {
+      buttonText.textContent = "Walls (2D Mode)";
+      this.wallToggleButton.title = "Walls are automatically hidden in 2D mode";
+    } else if (!hasBuilding) {
+      buttonText.textContent = "Toggle Walls";
+      this.wallToggleButton.title = "Select a building to toggle walls";
+    } else {
+      buttonText.textContent = wallsVisible ? "Hide Walls" : "Show Walls";
+      this.wallToggleButton.title = wallsVisible
+        ? "Hide building walls"
+        : "Show building walls";
+    }
   }
 
   setupEventListeners() {
@@ -807,6 +869,21 @@ export class Sidebar {
     );
     this.stateCleanups.push(buildingStateCleanup);
 
+    // Listen for wall visibility changes
+    const wallStateCleanup = appState.subscribe(
+      "wallsVisibilityChanged",
+      (data) => {
+        this.updateWallButtonState();
+      }
+    );
+    this.stateCleanups.push(wallStateCleanup);
+
+    // Listen for view mode changes to update wall button
+    const viewModeCleanup = appState.subscribe("viewModeChanged", (data) => {
+      this.updateWallButtonState();
+    });
+    this.stateCleanups.push(viewModeCleanup);
+
     console.log("[Sidebar] State management hooks initialized");
   }
 
@@ -911,6 +988,11 @@ export class Sidebar {
     // Update button availability
     this.view2DButton.disabled = !hasActiveBuilding;
 
+    // Update building instance reference for wall button
+    this.buildingInstance = hasActiveBuilding
+      ? appState.getActiveBuilding(lastActiveVenueId)
+      : null;
+
     // Update status indicator based on current view mode and building availability
     const currentViewMode = appState.getViewMode();
     if (currentViewMode === "2D") {
@@ -922,6 +1004,9 @@ export class Sidebar {
           : "Select a building to enable 2D view"
       );
     }
+
+    // Update wall toggle button state
+    this.updateWallButtonState();
 
     console.log(
       `[Sidebar] Building availability updated: ${hasActiveBuilding}`

@@ -37,6 +37,9 @@ class AppStateManager {
     this.kickMode = false; // false: only selected level, true: show with lower levels
     this.isProcessingClick = false;
 
+    // Wall visibility state
+    this.wallsVisible = true; // Default: walls visible in 3D mode
+
     // 3D Tiles Management
     this.activeTilesets = new Map(); // tilesetId → tileset instance mapping
     this.tilesetConfigs = new Map(); // tilesetId → configuration object
@@ -248,6 +251,40 @@ class AppStateManager {
    */
   getViewMode() {
     return this.currentViewMode;
+  }
+
+  /**
+   * Wall visibility state management
+   */
+
+  /**
+   * Get wall visibility state
+   * @returns {boolean}
+   */
+  getWallsVisible() {
+    return this.wallsVisible;
+  }
+
+  /**
+   * Set wall visibility state
+   * @param {boolean} visible
+   */
+  setWallsVisible(visible) {
+    if (this.wallsVisible !== visible) {
+      this.wallsVisible = visible;
+      this.emit("wallsVisibilityChanged", {
+        visible: visible,
+        timestamp: Date.now(),
+      });
+      this.saveState("setWallsVisible", { visible });
+    }
+  }
+
+  /**
+   * Toggle wall visibility
+   */
+  toggleWallsVisible() {
+    this.setWallsVisible(!this.wallsVisible);
   }
 
   getUnitLabelState() {
