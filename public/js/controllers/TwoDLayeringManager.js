@@ -20,6 +20,7 @@ export class TwoDLayeringManager {
       units: 0.0, // Ground level
       openings: 0.1, // 10cm above ground
       windows: 0.2, // 20cm above ground
+      unitLabels: 0.25,
       amenities: 0.3, // 30cm above ground
       occupants: 0.4, // 40cm above ground
     };
@@ -54,6 +55,9 @@ export class TwoDLayeringManager {
       // Step 4: Flatten unit polygons
       this.flattenUnitPolygons();
 
+      // Step 5: NEW - Process unit labels with proper height and scaling
+      this.processUnitLabels();
+
       this.isInitialized = true;
       console.log(
         "[2DLayeringManager] ✅ Height-based 2D mode applied successfully"
@@ -61,6 +65,73 @@ export class TwoDLayeringManager {
     } catch (error) {
       console.error("[2DLayeringManager] ❌ Error applying 2D mode:", error);
     }
+  }
+
+  /**
+   * Process unit labels with height-based positioning for 2D mode
+   */
+  processUnitLabels() {
+    console.log("[2DLayeringManager] Processing unit labels...");
+
+    const unitLabelDataSource = this.buildingIndoor.unitLabelDataSource;
+    if (!unitLabelDataSource) {
+      console.log("[2DLayeringManager] No unit labels data source found");
+      return;
+    }
+
+    let processedCount = 0;
+    unitLabelDataSource.entities.values.forEach((entity) => {
+      if (entity.billboard && entity.position) {
+        try {
+          // Get current position
+          const currentPos = entity.position.getValue
+            ? entity.position.getValue(Cesium.JulianDate.now())
+            : entity.position;
+
+          if (currentPos) {
+            // Extract lat/lng and create new position with unit label height
+            const cartographic = Cesium.Cartographic.fromCartesian(currentPos);
+            const longitude = Cesium.Math.toDegrees(cartographic.longitude);
+            const latitude = Cesium.Math.toDegrees(cartographic.latitude);
+
+            // Create new elevated position for unit labels
+            entity.position = Cesium.Cartesian3.fromDegrees(
+              longitude,
+              latitude,
+              this.heightLayers.unitLabels
+            );
+
+            // Configure billboard for 2D visibility with distance-based scaling
+            entity.billboard.heightReference = Cesium.HeightReference.NONE;
+            entity.billboard.disableDepthTestDistance =
+              Number.POSITIVE_INFINITY;
+
+            // Add distance-based scaling for readability
+            entity.billboard.scaleByDistance = new Cesium.NearFarScalar(
+              50,
+              1.5,
+              500,
+              0.5
+            );
+
+            // Add distance-based visibility to prevent clutter
+            entity.billboard.distanceDisplayCondition =
+              new Cesium.DistanceDisplayCondition(0, 1000);
+
+            processedCount++;
+          }
+        } catch (error) {
+          console.warn(
+            `[2DLayeringManager] Error processing unit label entity ${entity.id}:`,
+            error
+          );
+        }
+      }
+    });
+
+    console.log(
+      `[2DLayeringManager] ✅ Processed ${processedCount} unit label entities`
+    );
   }
 
   /**

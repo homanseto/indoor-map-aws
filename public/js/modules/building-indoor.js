@@ -45,15 +45,20 @@ export class BuildingIndoor {
         console.error("Error in handleViewModeStateChange:", error);
       });
     });
+
+    const unitLabelCleanup = StateHooks.useUnitLabelState(
+      (labelState) => {
+        this.handleUnitLabelStateChange(labelState);
+      },
+      { debugMode: false, name: `UnitLabelHook_${venueId}` }
+    );
+
     this.stateCleanups.push(viewModeCleanup1);
     this.stateCleanups.push(viewModeCleanup2);
+    this.stateCleanups.push(unitLabelCleanup);
 
-    // const unitLabelCleanup = StateHooks.useUnitLabelState((labelState) => {
-    //   this.handleUnitLabelStateChange(labelState);
-    // });
-    // this.stateCleanups.push(unitLabelCleanup);
-
-    // TODO: Initialize Cesium entities based on buildingData, using this.styles as needed
+    // ✅ ADD HERE: Setup camera monitoring for unit labels
+    this.setupCameraMonitoringForLabels();
   }
 
   // Load and display all features as separate GeoJsonDataSources
@@ -206,16 +211,16 @@ export class BuildingIndoor {
 
   async handleViewModeStateChange(uiState) {
     const mode = uiState.viewMode;
-    const kickMode = uiState.kickMode;
+    let kickMode = uiState.kickMode;
 
     // 🔥 KEY FIX: Only handle view mode changes for the currently active building
     const currentActiveVenueId = appState.getLastActiveVenueId();
-    const myVenueId = this.getVenueId(); // We need to track this building's venue ID
+    const myVenueId = this.getVenueId();
     if (!currentActiveVenueId || currentActiveVenueId !== myVenueId) {
       console.log(
-        `[BuildingIndoor] Ignoring view mode change - not active building. Active: ${currentActiveVenueId}, This: ${myVenueId}`
+        `[BuildingIndoor] Ignoring view mode change for inactive building ${myVenueId}`
       );
-      return; // Don't process view mode changes for inactive buildings
+      return;
     }
 
     console.log(
@@ -232,19 +237,25 @@ export class BuildingIndoor {
     // Initialize 2D manager if not already done
     this.init2DLayeringManager();
 
+    if (mode === "2D") {
+      appState.setKickMode(false);
+      kickMode = false;
+    }
+
     // Update kick toggle UI when kickMode changes
-    if (this.kickToggleContainer) {
-      const kickInput = this.kickToggleContainer.querySelector(
-        'input[type="checkbox"]'
+    if (this.kickToggleContainer && !appState.isIn2DMode) {
+      const checkbox = this.kickToggleContainer.querySelector(
+        "input[type='checkbox']"
       );
-      if (kickInput && kickInput.checked !== kickMode) {
-        kickInput.checked = kickMode;
+      if (checkbox) {
+        checkbox.checked = kickMode;
       }
     }
+
     const current = appState.getSelectedLevel();
 
     if (mode === "2D") {
-      // Apply 2D mode optimizations
+      // Apply 2D layering and filtering
       await this.twoDLayeringManager.apply2DMode();
       const levels = this.buildingData.levels.features.slice();
       const highest = levels.sort(
@@ -253,53 +264,29 @@ export class BuildingIndoor {
       const effectiveLevel =
         !current || current === "ALL" ? highest?.id : current;
 
-      if (effectiveLevel && effectiveLevel !== current) {
-        appState.setSelectedLevel(effectiveLevel);
-        await this.handleLevelSelect(effectiveLevel);
-        // const unitsDataSource = this.dataSources.units;
-        // if (unitsDataSource && unitsDataSource.entities.values.length > 0) {
-        //   try {
-        //     await this.viewer.flyTo(unitsDataSource.entities.values, {
-        //       duration: 2.0,
-        //       offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
-        //     });
-        //   } catch (error) {
-        //     console.error("Error during flyTo operation:", error);
-        //   }
-        // }
-      }
-
-      // ✅ FIX: Always apply filtering when switching to 2D mode
+      // Apply filtering first
       await this.filterFeaturesByLevel(effectiveLevel || "ALL", kickMode);
 
+      // ✅ TRIGGER unit labels for 2D mode - automatically show when switching to 2D
       appState.setUnitLabelState({
         active: true,
         venueId: currentActiveVenueId,
-        levelId: effectiveLevel ?? null,
+        levelId: effectiveLevel,
       });
+
       // Fly to units with appropriate 2D view
       await this.flyToUnitsFor2D();
     } else {
       // Restore 3D mode
       await this.twoDLayeringManager.restore3DMode();
-      // ✅ FIX: Always apply filtering when switching to 2D mode
       await this.filterFeaturesByLevel(current, kickMode);
+
+      // ✅ HIDE unit labels in 3D mode
       appState.resetUnitLabelState();
 
       // Fly to units with 3D perspective
       await this.flyToUnitsFor3D();
     }
-    // const unitsDataSource = this.dataSources.units;
-    // if (unitsDataSource && unitsDataSource.entities.values.length > 0) {
-    //   try {
-    //     await this.viewer.flyTo(unitsDataSource.entities.values, {
-    //       duration: 2.0,
-    //       offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
-    //     });
-    //   } catch (error) {
-    //     console.error("Error during flyTo operation:", error);
-    //   }
-    // }
   }
 
   /**
@@ -336,14 +323,103 @@ export class BuildingIndoor {
     }
   }
 
+  // NEW METHOD: Check if label fits within unit polygon
+  isLabelWithinUnit(labelCanvas, interiorPoint, polygon, holes = []) {
+    // Convert canvas dimensions to approximate geographic bounds
+    const labelWidthDegrees = labelCanvas.width * 0.000001; // Rough conversion
+    const labelHeightDegrees = labelCanvas.height * 0.000001;
+
+    // Create label bounding box corners
+    const labelBounds = [
+      [
+        interiorPoint.lon - labelWidthDegrees / 2,
+        interiorPoint.lat - labelHeightDegrees / 2,
+      ],
+      [
+        interiorPoint.lon + labelWidthDegrees / 2,
+        interiorPoint.lat - labelHeightDegrees / 2,
+      ],
+      [
+        interiorPoint.lon + labelWidthDegrees / 2,
+        interiorPoint.lat + labelHeightDegrees / 2,
+      ],
+      [
+        interiorPoint.lon - labelWidthDegrees / 2,
+        interiorPoint.lat + labelHeightDegrees / 2,
+      ],
+    ];
+
+    // Check if ALL corners of label are within the unit polygon
+    for (const corner of labelBounds) {
+      const point = { lon: corner[0], lat: corner[1] };
+      if (!this.isPointInPolygon(point, polygon, holes)) {
+        return false; // Label extends outside unit
+      }
+    }
+
+    return true; // Label fits completely within unit
+  }
+
+  // Add this method to monitor camera changes for unit label updates
+  setupCameraMonitoringForLabels() {
+    let lastCameraHeight = -1;
+    let updateTimeout = null;
+
+    // Monitor camera changes
+    this.cameraChangeRemover = this.viewer.camera.changed.addEventListener(
+      () => {
+        // Get current camera height
+        const currentHeight = this.getCameraHeight();
+
+        // Only update if height changed significantly (avoid excessive updates)
+        if (Math.abs(currentHeight - lastCameraHeight) > 1) {
+          // Debounce updates to avoid performance issues
+          if (updateTimeout) {
+            clearTimeout(updateTimeout);
+          }
+
+          updateTimeout = setTimeout(() => {
+            // Only update labels if currently in 2D mode and labels are active
+            if (appState.isIn2DMode() && this.unitLabelDataSource) {
+              console.log(
+                `[BuildingIndoor] Camera height changed: ${currentHeight.toFixed(
+                  2
+                )}m - updating unit labels`
+              );
+
+              // Get current label state and retrigger the update
+              const currentLabelState = appState.getUnitLabelState();
+              if (currentLabelState.active) {
+                this.handleUnitLabelStateChange(currentLabelState);
+              }
+            }
+            lastCameraHeight = currentHeight;
+          }, 150); // 150ms delay to avoid too frequent updates
+        }
+      }
+    );
+  }
+
+  // Helper method to get camera height
+  getCameraHeight() {
+    const camera = this.viewer.camera;
+    const cartographic = Cesium.Cartographic.fromCartesian(camera.position);
+    return cartographic.height;
+  }
+
   handleUnitLabelStateChange(labelState) {
+    console.log("[BuildingIndoor] Unit label state changed:", labelState);
+
+    const currentHeight = this.getCameraHeight();
+
     const activeBuilding = appState.getActiveBuilding(labelState.venueId);
     if (activeBuilding !== this) {
       this.removeUnitLabels();
       return;
     }
 
-    if (!labelState.active || !labelState.levelId) {
+    // Only show labels in 2D mode and when active
+    if (!labelState.active || !appState.isIn2DMode()) {
       this.removeUnitLabels();
       return;
     }
@@ -352,39 +428,117 @@ export class BuildingIndoor {
     ds.entities.removeAll();
 
     const units = this.buildingData.units?.features ?? [];
-    units
-      .filter(
-        (unit) =>
-          unit.properties.level_id === labelState.levelId &&
-          unit.properties.nameEn
-      )
-      .forEach((unit) => {
-        const center = this.calculatePolygonCenter(
-          unit.geometry.coordinates[0]
-        );
-        if (!center) return;
 
-        ds.entities.add({
-          id: `unit_label_${unit.id}`,
-          position: Cesium.Cartesian3.fromDegrees(center.lon, center.lat),
-          billboard: {
-            image: this.createTextCanvas(unit.properties.nameEn),
-            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-            horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
-            scale: 1.0,
-            disableDepthTestDistance: Number.POSITIVE_INFINITY,
-            heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
-          },
-        });
+    // Filter units based on level selection
+    let filteredUnits = units.filter((unit) => unit.properties.nameEn);
+
+    if (labelState.levelId && labelState.levelId !== "ALL") {
+      filteredUnits = filteredUnits.filter(
+        (unit) => unit.properties.level_id === labelState.levelId
+      );
+    }
+
+    if (currentHeight > 11809450) {
+      return;
+    }
+
+    filteredUnits.forEach((unit) => {
+      // Extract holes if polygon has them (for donut-shaped units)
+      const mainPolygon = unit.geometry.coordinates[0];
+      const holes = unit.geometry.coordinates.slice(1); // Additional rings are holes
+
+      // Calculate polygon area for size-based visibility decisions
+      const polygonArea = this.calculatePolygonArea(mainPolygon);
+      const isVerySmallPolygon = polygonArea < 0.000000001; // Very small threshold
+
+      // Calculate optimal interior point (avoids holes automatically)
+      const interiorPoint = this.calculatePolygonInteriorPoint(
+        mainPolygon,
+        holes
+      );
+      if (!interiorPoint) return;
+
+      // Create adaptive-sized label
+      const maxLabelWidth = isVerySmallPolygon ? 80 : 120;
+      const maxLabelHeight = isVerySmallPolygon ? 16 : 24;
+      const labelCanvas = this.createTextCanvas(
+        unit.properties.nameEn,
+        maxLabelWidth,
+        maxLabelHeight
+      );
+
+      // ✅ KEY CHECK: Only show label if it fits completely within unit
+      // if (
+      //   !this.isLabelWithinUnit(labelCanvas, interiorPoint, mainPolygon, holes)
+      // ) {
+      //   return; // Skip this unit - label doesn't fit
+      // }
+
+      // Create distance display condition based on polygon size
+      let minDistance, maxDistance;
+      if (isVerySmallPolygon) {
+        // Small polygons: only show when zoomed in close
+        minDistance = 0;
+        maxDistance = 50; // Only visible when very close
+      } else {
+        // Normal polygons: show at moderate zoom levels
+        minDistance = 0;
+        maxDistance = 120;
+      }
+
+      ds.entities.add({
+        id: `unit_label_${unit.id}`,
+        position: Cesium.Cartesian3.fromDegrees(
+          interiorPoint.lon,
+          interiorPoint.lat,
+          0.25 // Height will be adjusted by TwoDLayeringManager
+        ),
+        billboard: {
+          image: labelCanvas,
+          verticalOrigin: Cesium.VerticalOrigin.CENTER,
+          horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+          scale: isVerySmallPolygon ? 0.7 : 0.8, // Smaller scale for tiny units
+          heightReference: Cesium.HeightReference.NONE,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          // Size-based scaling
+          scaleByDistance: new Cesium.NearFarScalar(
+            20,
+            isVerySmallPolygon ? 1.2 : 1.0,
+            maxDistance,
+            0.4
+          ),
+          // Size-based visibility
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(
+            minDistance,
+            maxDistance
+          ),
+        },
+        allowPicking: false,
+        // Store metadata for debugging
+        _unitArea: polygonArea,
+        _isSmallUnit: isVerySmallPolygon,
       });
+    });
 
     if (ds.entities.values.length === 0) {
       this.removeUnitLabels();
+    } else {
+      const smallUnits = ds.entities.values.filter(
+        (e) => e._isSmallUnit
+      ).length;
+      console.log(
+        `[BuildingIndoor] Added ${ds.entities.values.length} unit labels (${smallUnits} small units) with interior positioning and donut-hole avoidance`
+      );
+
+      if (this.twoDLayeringManager && this.twoDLayeringManager.isInitialized) {
+        this.twoDLayeringManager.processUnitLabels();
+      }
     }
   }
   //////unit-labels/////
 
-  // Calculate polygon center point
+  ///Calculation/////
+  // Calculate polygon center point //////
   calculatePolygonCenter(coordinates) {
     if (!coordinates || coordinates.length < 3) return null;
 
@@ -401,30 +555,278 @@ export class BuildingIndoor {
     };
   }
 
+  // REPLACE the existing calculatePolygonCenter method with these enhanced methods:
+
+  // NEW: Advanced polygon interior point calculation with simplified approach
+  calculatePolygonInteriorPoint(coordinates, holes = []) {
+    if (!coordinates || coordinates.length < 3) return null;
+
+    // Method 1: Try geometric centroid first
+    const centroid = this.calculateGeometricCentroid(coordinates);
+    if (centroid && this.isPointInPolygon(centroid, coordinates, holes)) {
+      return centroid;
+    }
+
+    // Method 2: Simplified grid-based search for interior point
+    const gridPoint = this.findGridBasedInteriorPoint(coordinates, holes);
+    if (gridPoint) {
+      return gridPoint;
+    }
+
+    // Method 3: Fallback - edge-based interior point
+    return this.findEdgeBasedInteriorPoint(coordinates, holes);
+  }
+
+  // Calculate true geometric centroid using polygon area formula
+  calculateGeometricCentroid(coordinates) {
+    let area = 0;
+    let centroidX = 0;
+    let centroidY = 0;
+
+    for (let i = 0; i < coordinates.length - 1; i++) {
+      const x1 = coordinates[i][0];
+      const y1 = coordinates[i][1];
+      const x2 = coordinates[i + 1][0];
+      const y2 = coordinates[i + 1][1];
+
+      const cross = x1 * y2 - x2 * y1;
+      area += cross;
+      centroidX += (x1 + x2) * cross;
+      centroidY += (y1 + y2) * cross;
+    }
+
+    area *= 0.5;
+    if (Math.abs(area) < 1e-10) return null; // Degenerate polygon
+
+    centroidX /= 6 * area;
+    centroidY /= 6 * area;
+
+    return { lon: centroidX, lat: centroidY };
+  }
+
+  // Simplified grid-based search for best interior point
+  findGridBasedInteriorPoint(polygon, holes = []) {
+    // Get polygon bounding box
+    const minX = Math.min(...polygon.map((p) => p[0]));
+    const maxX = Math.max(...polygon.map((p) => p[0]));
+    const minY = Math.min(...polygon.map((p) => p[1]));
+    const maxY = Math.max(...polygon.map((p) => p[1]));
+
+    // Grid resolution based on polygon size
+    const width = maxX - minX;
+    const height = maxY - minY;
+    const gridSize = Math.max(
+      5,
+      Math.min(15, Math.floor(Math.sqrt(width * height) * 100000))
+    ); // Adaptive grid
+
+    const stepX = width / gridSize;
+    const stepY = height / gridSize;
+
+    let bestPoint = null;
+    let bestDistance = 0;
+
+    // Search grid points
+    for (let i = 1; i < gridSize; i++) {
+      for (let j = 1; j < gridSize; j++) {
+        const point = {
+          lon: minX + i * stepX,
+          lat: minY + j * stepY,
+        };
+
+        if (this.isPointInPolygon(point, polygon, holes)) {
+          const distanceToEdge = this.getDistanceToPolygonEdge(point, polygon);
+          if (distanceToEdge > bestDistance) {
+            bestDistance = distanceToEdge;
+            bestPoint = point;
+          }
+        }
+      }
+    }
+
+    return bestDistance > 0 ? bestPoint : null;
+  }
+
+  // Fallback: Find point by moving inward from polygon edges
+  findEdgeBasedInteriorPoint(polygon, holes = []) {
+    for (let i = 0; i < polygon.length - 1; i++) {
+      const p1 = polygon[i];
+      const p2 = polygon[i + 1];
+
+      // Try points along the edge, moving inward
+      for (let offset = 0.2; offset <= 0.8; offset += 0.3) {
+        const edgePoint = {
+          lon: p1[0] + (p2[0] - p1[0]) * offset,
+          lat: p1[1] + (p2[1] - p1[1]) * offset,
+        };
+
+        // Move point inward (perpendicular to edge)
+        const dx = p2[0] - p1[0];
+        const dy = p2[1] - p1[1];
+        const length = Math.sqrt(dx * dx + dy * dy);
+
+        if (length > 0) {
+          const inwardOffset = Math.min(0.0001, length * 0.1); // Adaptive inward movement
+          const inwardPoint = {
+            lon: edgePoint.lon + (dy / length) * inwardOffset,
+            lat: edgePoint.lat - (dx / length) * inwardOffset,
+          };
+
+          if (this.isPointInPolygon(inwardPoint, polygon, holes)) {
+            return inwardPoint;
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  // Point-in-polygon test with holes support
+  isPointInPolygon(point, polygon, holes = []) {
+    // Check if point is inside main polygon
+    if (!this.pointInPolygonRaycast(point, polygon)) {
+      return false;
+    }
+
+    // Check if point is not inside any holes (for donut-shaped units)
+    for (const hole of holes) {
+      if (this.pointInPolygonRaycast(point, hole)) {
+        return false; // Point is in hole, so not valid
+      }
+    }
+
+    return true;
+  }
+
+  // Ray casting algorithm for point-in-polygon test
+  pointInPolygonRaycast(point, polygon) {
+    let inside = false;
+    const x = point.lon;
+    const y = point.lat;
+
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i][0];
+      const yi = polygon[i][1];
+      const xj = polygon[j][0];
+      const yj = polygon[j][1];
+
+      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) {
+        inside = !inside;
+      }
+    }
+
+    return inside;
+  }
+
+  // Calculate minimum distance from point to polygon edge
+  getDistanceToPolygonEdge(point, polygon) {
+    let minDistance = Infinity;
+
+    for (let i = 0; i < polygon.length - 1; i++) {
+      const distance = this.getDistanceToLineSegment(
+        point,
+        { lon: polygon[i][0], lat: polygon[i][1] },
+        { lon: polygon[i + 1][0], lat: polygon[i + 1][1] }
+      );
+      minDistance = Math.min(minDistance, distance);
+    }
+
+    return minDistance;
+  }
+
+  // Distance from point to line segment
+  getDistanceToLineSegment(point, lineStart, lineEnd) {
+    const dx = lineEnd.lon - lineStart.lon;
+    const dy = lineEnd.lat - lineStart.lat;
+
+    if (dx === 0 && dy === 0) {
+      const dpx = point.lon - lineStart.lon;
+      const dpy = point.lat - lineStart.lat;
+      return Math.sqrt(dpx * dpx + dpy * dpy);
+    }
+
+    const t = Math.max(
+      0,
+      Math.min(
+        1,
+        ((point.lon - lineStart.lon) * dx + (point.lat - lineStart.lat) * dy) /
+          (dx * dx + dy * dy)
+      )
+    );
+
+    const projectionX = lineStart.lon + t * dx;
+    const projectionY = lineStart.lat + t * dy;
+
+    const dpx = point.lon - projectionX;
+    const dpy = point.lat - projectionY;
+
+    return Math.sqrt(dpx * dpx + dpy * dpy);
+  }
+
+  // Calculate polygon area for size-based decisions
+  calculatePolygonArea(coordinates) {
+    let area = 0;
+    for (let i = 0; i < coordinates.length - 1; i++) {
+      const x1 = coordinates[i][0];
+      const y1 = coordinates[i][1];
+      const x2 = coordinates[i + 1][0];
+      const y2 = coordinates[i + 1][1];
+      area += x1 * y2 - x2 * y1;
+    }
+    return Math.abs(area) / 2;
+  }
+
+  ///Calculation/////
+
   // Create text canvas with transparent background
-  createTextCanvas(text) {
+  createTextCanvas(text, maxWidth = 120, maxHeight = 24) {
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
 
-    // Set canvas size and font
-    canvas.width = 200;
-    canvas.height = 40;
-    context.font = "bold 14px Arial, sans-serif";
+    // Start with smaller base font
+    let fontSize = 14;
+    context.font = `bold ${fontSize}px Arial, sans-serif`;
+
+    // Measure text and adjust if needed
+    let metrics = context.measureText(text);
+    let textWidth = metrics.width;
+
+    // Adjust font size to fit within maxWidth
+    while (textWidth > maxWidth - 8 && fontSize > 7) {
+      fontSize--;
+      context.font = `bold ${fontSize}px Arial, sans-serif`;
+      metrics = context.measureText(text);
+      textWidth = metrics.width;
+    }
+
+    // Set canvas size based on text dimensions
+    const padding = 6;
+    canvas.width = Math.min(textWidth + padding, maxWidth);
+    canvas.height = Math.min(fontSize + padding, maxHeight);
+
+    // Re-apply font after canvas resize
+    context.font = `bold ${fontSize}px Arial, sans-serif`;
     context.textAlign = "center";
     context.textBaseline = "middle";
 
-    // No background - transparent canvas
+    // Clear canvas
     context.clearRect(0, 0, canvas.width, canvas.height);
 
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
 
-    // Draw text outline for better visibility against any background
-    context.strokeStyle = "rgba(0, 0, 0, 0.8)";
-    context.lineWidth = 3;
+    // // Semi-transparent background for better readability
+    // context.fillStyle = "rgba(255, 255, 255, 0.8)";
+    // context.roundRect(2, 2, canvas.width - 4, canvas.height - 4, 2);
+    // context.fill();
+
+    // Draw text outline for better contrast
+    context.strokeStyle = "rgba(0, 0, 0, 0.9)";
+    context.lineWidth = 1.2;
     context.strokeText(text, centerX, centerY);
 
-    // Draw main text in white
+    // Draw main text
     context.fillStyle = "#FFFFFF";
     context.fillText(text, centerX, centerY);
 
@@ -462,6 +864,7 @@ export class BuildingIndoor {
     input.type = "checkbox";
     input.className = "form-check-input me-2";
     input.checked = appState.getKickMode();
+    if (appState.isIn2DMode) return;
     input.addEventListener("change", async () => {
       // Update centralized state instead of local property
       appState.setKickMode(input.checked);
@@ -549,7 +952,7 @@ export class BuildingIndoor {
       appState.setUnitLabelState({
         active: true,
         venueId: appState.getLastActiveVenueId(),
-        levelId,
+        levelId: levelId === "ALL" ? null : levelId,
       });
     }
 

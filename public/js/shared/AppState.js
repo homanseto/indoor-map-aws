@@ -259,7 +259,7 @@ class AppStateManager {
     const merged = {
       active: false,
       venueId: null,
-      levelId: null,
+      levelId: null, // null means "ALL levels", specific levelId means that level only
       ...nextState,
     };
 
@@ -272,6 +272,8 @@ class AppStateManager {
 
     this.unitLabelState = merged;
     this.emit("unitLabelStateChanged", { previous, current: merged });
+
+    console.log(`[AppState] Unit label state updated:`, merged);
   }
 
   resetUnitLabelState() {
