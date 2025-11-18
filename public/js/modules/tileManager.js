@@ -220,27 +220,16 @@ export class TilesManager {
    * @param {number} opacity
    */
   updateTilesetOpacity(tilesetId, tileset, opacity) {
-    const config = appState.getTilesetConfig(tilesetId);
-    if (!config || !config.style) return;
-
-    // Create new style with updated opacity
-    const updatedStyle = { ...config.style };
-
-    if (updatedStyle.color && typeof updatedStyle.color === "object") {
-      // Handle function-based color evaluation
-      if (updatedStyle.color.evaluateColor) {
-        updatedStyle.color = {
-          evaluateColor: function (feature, result) {
-            return Cesium.Color.clone(
-              Cesium.Color.WHITE.withAlpha(opacity),
-              result
-            );
-          },
-        };
-      }
-    }
-
-    tileset.style = new Cesium.Cesium3DTileStyle(updatedStyle);
+    tileset.style = new Cesium.Cesium3DTileStyle({
+      color: {
+        evaluateColor: function (feature, result) {
+          return Cesium.Color.clone(
+            Cesium.Color.WHITE.withAlpha(opacity),
+            result
+          );
+        },
+      },
+    });
   }
 
   /**

@@ -50,6 +50,16 @@ const EVENT_STATE_MAP = {
   // Label state events
   unitLabelStateChanged: ["getUnitLabelState"],
 
+  // Wall visibility events
+  wallsVisibilityChanged: ["getWallsVisible"],
+
+  // Tileset events
+  tilesetVisibilityChanged: ["getTilesetVisible", "isTilesetActive"],
+  tilesetOpacityChanged: ["getTilesetOpacity"],
+  tilesetLoadingStateChanged: ["getTilesetState"],
+  tilesetAdded: ["getActiveTileset", "isTilesetActive"],
+  tilesetRemoved: ["getActiveTileset", "isTilesetActive"],
+
   // Viewer events
   viewerChanged: ["getViewer"],
   sidebarChanged: ["getMapSidebar"],

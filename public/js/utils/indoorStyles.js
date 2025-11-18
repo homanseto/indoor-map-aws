@@ -228,9 +228,9 @@ export const indoorStyles = {
     stroke: new Cesium.Color(0.7, 0.7, 0.7, 1),
   },
   window: {
-    stroke: new Cesium.Color(0.77, 0.86, 0.93, 0.5),
+    stroke: new Cesium.Color(0.7, 0.3, 0.8, 0.5), // Purple with some transparency
     strokeWidth: 4,
-    fill: new Cesium.Color(0.77, 0.86, 0.93, 0.5),
+    fill: new Cesium.Color(0.7, 0.3, 0.8, 0.5), // Purple with some transparency
     outline: false,
   },
   opening: {

@@ -18,11 +18,11 @@ export class TwoDLayeringManager {
     // Height layers to prevent Z-fighting (in meters above ground)
     this.heightLayers = {
       units: 0.0, // Ground level
-      openings: 0.1, // 10cm above ground
-      windows: 0.2, // 20cm above ground
-      unitLabels: 0.25,
-      amenities: 0.3, // 30cm above ground
-      occupants: 0.4, // 40cm above ground
+      openings: 0.8, // 10cm above ground
+      windows: 1.2, // 20cm above ground
+      unitLabels: 0.6,
+      amenities: 1.6, // 30cm above ground
+      occupants: 2.0, // 40cm above ground
     };
 
     console.log(
@@ -49,11 +49,11 @@ export class TwoDLayeringManager {
       // Step 2: Hide walls and doors (they're not needed in 2D)
       this.hideWallsAndDoors();
 
-      // Step 3: Apply height-based positioning to prevent Z-fighting
-      this.applyHeightBasedPositioning();
-
-      // Step 4: Flatten unit polygons
+      // Step 3: Flatten unit polygons
       this.flattenUnitPolygons();
+
+      // Step 4: Apply height-based positioning to prevent Z-fighting
+      this.applyHeightBasedPositioning();
 
       // Step 5: NEW - Process unit labels with proper height and scaling
       this.processUnitLabels();
@@ -174,8 +174,9 @@ export class TwoDLayeringManager {
             if (entity.billboard) {
               props.billboard = {
                 heightReference: entity.billboard.heightReference,
-                disableDepthTestDistance:
-                  entity.billboard.disableDepthTestDistance,
+                // disableDepthTestDistance:
+                //   entity.billboard.disableDepthTestDistance,
+                disableDepthTestDistance: 0,
               };
             }
 
@@ -190,6 +191,9 @@ export class TwoDLayeringManager {
               props.polyline = {
                 positions: entity.polyline.positions,
                 clampToGround: entity.polyline.clampToGround,
+                depthFailMaterial: null, // Add this
+                zIndex: null, // Add this
+                width: entity.polyline.width,
               };
             }
 
@@ -338,14 +342,18 @@ export class TwoDLayeringManager {
               const latitude = Cesium.Math.toDegrees(cartographic.latitude);
               return Cesium.Cartesian3.fromDegrees(longitude, latitude, height);
             });
-
+            entity.allowPicking = true;
             // Apply elevated positions
             entity.polyline.positions = elevatedPositions;
             entity.polyline.clampToGround = false; // Don't clamp - we have explicit height
 
             // Enhance line width for better visibility in 2D
             const currentWidth = entity.polyline.width || 1;
-            entity.polyline.width = Math.max(2, currentWidth * 1.5);
+            entity.polyline.width = Math.max(2, currentWidth * 1.2);
+
+            // Ensure lines render on top
+            entity.polyline.depthFailMaterial = entity.polyline.material;
+            entity.polyline.zIndex = 100; // If supported
 
             processedCount++;
           }

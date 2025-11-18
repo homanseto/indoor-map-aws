@@ -64,17 +64,17 @@ class AppStateManager {
           },
         },
       },
-      // PNTiles: {
-      //   id: 'PNTiles',
-      //   name: '3D Pedestrian Network',
-      //   url: 'http://3dm/dev/bR5B7mxkmjhRhTTroMCo/storage/3dpn/3DPN_v1.0/tileset.json',
-      //   defaultOpacity: 1.0,
-      //   defaultVisible: true,
-      //   style: {
-      //     show: true,
-      //     color: "color('orange')"
-      //   }
-      // },
+      PNTiles: {
+        id: "PNTiles",
+        name: "3D Pedestrian Network",
+        url: "http://3dm/dev/bR5B7mxkmjhRhTTroMCo/storage/3dpn/3DPN_v1.0/tileset.json",
+        defaultOpacity: 1.0,
+        defaultVisible: true,
+        style: {
+          show: true,
+          color: "color('orange')",
+        },
+      },
       // indoorMTRTiles: {
       //   id: 'indoorMTRTiles',
       //   name: 'Indoor MTR Network',

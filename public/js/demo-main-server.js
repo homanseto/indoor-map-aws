@@ -170,6 +170,16 @@ async function initDemo() {
       console.error("❌ Failed to load threeDTiles:", error);
     });
 
+  tilesManager
+    .loadTileset("PNTiles")
+    .then((tileset) => {
+      console.log("✅ PNTiles loaded successfully:", tileset.url);
+      console.log("Tileset visible:", tileset.show);
+    })
+    .catch((error) => {
+      console.error("❌ Failed to load PNTiles:", error);
+    });
+
   // Inject Z-clipping bar HTML
   const zClippingBarContainer = document.getElementById(
     "zClippingBarContainer"

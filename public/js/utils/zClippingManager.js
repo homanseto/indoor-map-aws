@@ -25,6 +25,9 @@ export const OpacityControl = {
   opacityValue: null,
   opacityFill: null,
 
+  // Discrete opacity values (0, 50, 60, 70, 80, 100)
+  opacityValues: [0, 50, 60, 70, 80, 100],
+
   // 3D Buildings Opacity Control
   initOpacityControl() {
     // Initialize element references
@@ -32,27 +35,40 @@ export const OpacityControl = {
     this.opacityValue = document.getElementById("opacity-value");
     this.opacityFill = document.getElementById("opacity-fill");
 
-    if (!this.opacitySlider || !this.opacityValue || !this.opacityFill) {
+    if (!this.opacitySlider || !this.opacityFill) {
       console.warn("[OpacityControl] Opacity control elements not found");
       return;
     }
+
+    // Hide the percentage text element if it exists
+    if (this.opacityValue) {
+      this.opacityValue.style.display = "none";
+    }
+
+    // Configure slider for discrete values
+    this.opacitySlider.min = 0;
+    this.opacitySlider.max = this.opacityValues.length - 1;
+    this.opacitySlider.step = 1;
+    this.opacitySlider.value = 1; // Default to index 1
 
     // Store 'this' reference for event handlers
     const self = this;
 
     // Handle slider input
     this.opacitySlider.addEventListener("input", (event) => {
-      const percentage = parseInt(event.target.value);
-      self.updateOpacityDisplay(percentage); // Use 'self' instead of 'this'
+      const index = parseInt(event.target.value);
+      const percentage = self.opacityValues[index];
+      self.updateOpacityDisplay(percentage);
     });
 
     // Handle slider change (when user releases)
     this.opacitySlider.addEventListener("change", (event) => {
-      const percentage = parseInt(event.target.value);
+      const index = parseInt(event.target.value);
+      const percentage = self.opacityValues[index];
       const opacity = percentage / 100; // Convert to 0-1 range
 
       console.log(
-        `[OpacityControl] Opacity changed to: ${opacity} (${percentage}%)`
+        `[OpacityControl] Opacity changed to: ${opacity} (${percentage})`
       );
       // Connect to AppState - UPDATE THIS SECTION
       if (
@@ -60,9 +76,7 @@ export const OpacityControl = {
         typeof window.appState.setTilesetOpacity === "function"
       ) {
         window.appState.setTilesetOpacity("threeDTiles", opacity);
-        console.log(
-          `[OpacityControl] Set threeDTiles opacity to: ${opacity} (${percentage}%)`
-        );
+        console.log(`[OpacityControl] Set threeDTiles opacity to: ${opacity}`);
       } else {
         console.warn("[OpacityControl] AppState not available");
         console.log(
@@ -75,21 +89,23 @@ export const OpacityControl = {
     });
 
     // Initialize display
-    this.updateOpacityDisplay(50); // Default 50%
+    this.updateOpacityDisplay(this.opacityValues[1]); // Default to index 1
     console.log("[OpacityControl] Initialized successfully");
   },
 
   updateOpacityDisplay(percentage) {
     // Check if elements are available
-    if (!this.opacityValue || !this.opacityFill) {
+    if (!this.opacityFill) {
       console.warn("[OpacityControl] Elements not initialized");
       return;
     }
 
-    // Update percentage text
-    this.opacityValue.textContent = `${percentage}%`;
+    // Hide percentage text if element exists
+    if (this.opacityValue) {
+      this.opacityValue.style.display = "none";
+    }
 
-    // Update slider fill
+    // Update slider fill only (no text display)
     this.opacityFill.style.width = `${percentage}%`;
   },
 };

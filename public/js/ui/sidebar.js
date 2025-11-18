@@ -28,6 +28,7 @@ export class Sidebar {
     this.viewControls = null;
     this.view2DButton = null;
     this.wallToggleButton = null;
+    this.pnTilesToggleButton = null;
     this.buildingInstance = null;
 
     // State management hooks
@@ -151,6 +152,10 @@ export class Sidebar {
     this.createWallToggleButton();
     viewSection.appendChild(this.wallToggleButton);
 
+    // ✅ ADD PNTILES TOGGLE BUTTON under wall toggle
+    this.createPNTilesToggleButton();
+    viewSection.appendChild(this.pnTilesToggleButton);
+
     this.viewControls.appendChild(viewSection);
 
     // Setup event listener for 2D view button (after button is created)
@@ -179,6 +184,28 @@ export class Sidebar {
       e.preventDefault();
       e.stopPropagation();
       appState.toggleWallsVisible();
+    });
+  }
+
+  createPNTilesToggleButton() {
+    // Create PNTiles visibility toggle button
+    this.pnTilesToggleButton = document.createElement("button");
+    this.pnTilesToggleButton.className = "pntiles-toggle-button";
+    this.pnTilesToggleButton.innerHTML = `
+      <span class="pntiles-icon">🚶</span>
+      <span class="pntiles-button-text">Toggle Pedestrian Network</span>
+    `;
+    this.pnTilesToggleButton.title = "Show/Hide 3D Pedestrian Network";
+
+    // Update initial state
+    this.updatePNTilesButtonState();
+
+    // Event listener for PNTiles toggle
+    this.pnTilesToggleButton.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const currentVisible = appState.getTilesetVisible("PNTiles");
+      appState.setTilesetVisible("PNTiles", !currentVisible);
     });
   }
 
@@ -213,6 +240,42 @@ export class Sidebar {
       this.wallToggleButton.title = wallsVisible
         ? "Hide building walls"
         : "Show building walls";
+    }
+  }
+
+  updatePNTilesButtonState() {
+    if (!this.pnTilesToggleButton) return;
+
+    const pnTilesVisible = appState.getTilesetVisible("PNTiles");
+    const pnTilesLoaded = appState.isTilesetActive("PNTiles");
+
+    // Button enabled when PNTiles are loaded
+    this.pnTilesToggleButton.disabled = !pnTilesLoaded;
+
+    // Update button appearance based on visibility
+    this.pnTilesToggleButton.classList.remove(
+      "pntiles-visible",
+      "pntiles-hidden"
+    );
+    if (pnTilesVisible) {
+      this.pnTilesToggleButton.classList.add("pntiles-visible");
+    } else {
+      this.pnTilesToggleButton.classList.add("pntiles-hidden");
+    }
+
+    // Update button text
+    const buttonText = this.pnTilesToggleButton.querySelector(
+      ".pntiles-button-text"
+    );
+    if (!pnTilesLoaded) {
+      buttonText.textContent = "Loading...";
+      this.pnTilesToggleButton.title = "Pedestrian Network is loading";
+    } else if (pnTilesVisible) {
+      buttonText.textContent = "Hide Pedestrian Network";
+      this.pnTilesToggleButton.title = "Hide 3D Pedestrian Network";
+    } else {
+      buttonText.textContent = "Show Pedestrian Network";
+      this.pnTilesToggleButton.title = "Show 3D Pedestrian Network";
     }
   }
 
@@ -884,6 +947,36 @@ export class Sidebar {
     });
     this.stateCleanups.push(viewModeCleanup);
 
+    // Subscribe to PNTiles visibility changes
+    const pnTilesVisibilityCleanup = appState.subscribe(
+      "tilesetVisibilityChanged",
+      (data) => {
+        if (data.tilesetId === "PNTiles") {
+          this.updatePNTilesButtonState();
+        }
+      }
+    );
+    this.stateCleanups.push(pnTilesVisibilityCleanup);
+
+    // Subscribe to tileset loading state changes
+    const tilesetLoadingCleanup = appState.subscribe(
+      "tilesetLoadingStateChanged",
+      (data) => {
+        if (data.tilesetId === "PNTiles") {
+          this.updatePNTilesButtonState();
+        }
+      }
+    );
+    this.stateCleanups.push(tilesetLoadingCleanup);
+
+    // Subscribe to tileset added events
+    const tilesetAddedCleanup = appState.subscribe("tilesetAdded", (data) => {
+      if (data.tilesetId === "PNTiles") {
+        this.updatePNTilesButtonState();
+      }
+    });
+    this.stateCleanups.push(tilesetAddedCleanup);
+
     console.log("[Sidebar] State management hooks initialized");
   }
 
@@ -921,6 +1014,12 @@ export class Sidebar {
           : "Select a building to enable 2D view"
       );
     }
+
+    // Update wall toggle button state for new view mode
+    this.updateWallButtonState();
+
+    // Update PNTiles button state
+    this.updatePNTilesButtonState();
   }
 
   updateStatusIndicator(message) {
@@ -1007,6 +1106,9 @@ export class Sidebar {
 
     // Update wall toggle button state
     this.updateWallButtonState();
+
+    // Update PNTiles button state
+    this.updatePNTilesButtonState();
 
     console.log(
       `[Sidebar] Building availability updated: ${hasActiveBuilding}`
