@@ -62,8 +62,8 @@ export const indoorStyles = {
       outline: false,
     },
     opentobelow: {
-      stroke: new Cesium.Color(0, 0, 0, 0),
-      fill: new Cesium.Color(1, 1, 1, 0.1),
+      stroke: new Cesium.Color(0, 0, 0, 0.2),
+      fill: new Cesium.Color(1, 1, 1, 0.2),
       outline: false,
     },
     ramp: {
@@ -133,14 +133,6 @@ export const indoorStyles = {
       fill: new Cesium.Color(0.902, 0.824, 0.725, 1),
       outline: false,
     },
-
-    // Special architectural features
-    opentobelow: {
-      stroke: new Cesium.Color(0, 0, 0, 0),
-      fill: new Cesium.Color(1, 1, 1, 0),
-      outline: false,
-    },
-
     // Transportation and parking
     parking: {
       stroke: new Cesium.Color(0.7, 0.7, 0.7, 1),

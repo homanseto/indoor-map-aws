@@ -35,6 +35,9 @@ app.get("/indoor-viewer.html", (req, res) => {
 
 app.use(express.static(path.resolve("public")));
 
+// Serve 3D tiles and other root-level static assets
+app.use(express.static(path.resolve(".")));
+
 // // Before mounting routes
 const csrfProtection = csurf({ cookie: true });
 

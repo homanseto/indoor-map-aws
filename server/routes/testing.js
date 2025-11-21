@@ -46,8 +46,9 @@ router.get("/test-db", async (req, res) => {
 
 // GET /test-read-json?file=filename.json
 router.get("/test-read-json", async (req, res) => {
-  const testDir = "./testing-data/indoor";
+  const testDir = "./testing-data/update/20251121";
   const jsonfiles = await fs.readdirSync(testDir);
+  const failedList = [];
   try {
     for (let jf of jsonfiles) {
       const filePath = path.join(testDir, jf);
@@ -59,9 +60,12 @@ router.get("/test-read-json", async (req, res) => {
       const jsonService = new JsonFileService();
       const json = await jsonService.readJson(filePath);
       const venues = await utils.convertToVenueMongoDBTable(json.data);
+      if (typeof venues === "string") {
+        failedList.push(venues);
+      }
       console.log("Read JSON from", filePath, ":", json);
     }
-    res.json(jsonfiles);
+    res.json(failedList);
   } catch (err) {
     console.error("Error reading JSON file:", err.message);
     res.status(500).json({ error: "Failed to read or parse file" });

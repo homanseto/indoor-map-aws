@@ -45,7 +45,10 @@ export class Utils {
       if (data.occupants && data.anchors) {
         this.joinOccupantwithAnchor(data);
       }
-      this.addVenueIdToAllFeatures(data, venueId);
+      const errorAddingVenue = this.addVenueIdToAllFeatures(data, venueId);
+      if (typeof errorAddingVenue === "string") {
+        return errorAddingVenue;
+      }
       data.venue_id = venueId;
       delete data.venue;
       delete data.anchors;
@@ -62,6 +65,7 @@ export class Utils {
       return result;
     } catch (error) {
       console.log(error);
+      return DataTransfer.displayName;
     }
   }
 
@@ -121,19 +125,25 @@ export class Utils {
           u.properties.name && u.properties.name.zh ? u.properties.name.zh : "";
         delete u.properties.name;
       });
-      data.amenities.forEach((am) => {
-        am.properties.venue_id = venueId;
-        am.properties.zValue = am.geometry.coordinates[2];
-        am.properties.nameEn = am.properties.name.en;
-        am.properties.nameZh = am.properties.name.zh
-          ? am.properties.name.zh
-          : "";
-        delete am.properties.name;
-      });
-      data.occupants.forEach((o) => {
-        o.properties.venue_id = venueId;
-        o.properties.zValue = o.geometry.coordinates[2];
-      });
+      if (data.amenities) {
+        data.amenities.forEach((am) => {
+          am.properties.venue_id = venueId;
+          am.properties.zValue = am.geometry.coordinates[2];
+          am.properties.nameEn = am.properties.name.en;
+          am.properties.nameZh = am.properties.name.zh
+            ? am.properties.name.zh
+            : "";
+          delete am.properties.name;
+        });
+      }
+
+      if (data.occupants) {
+        data.occupants.forEach((o) => {
+          o.properties.venue_id = venueId;
+          o.properties.zValue = o.geometry.coordinates[2];
+        });
+      }
+
       data.opening.forEach((o) => {
         o.properties.venue_id = venueId;
         o.properties.zValue = o.geometry.coordinates[0][2];
@@ -148,13 +158,17 @@ export class Utils {
           : null;
         delete o.properties.door;
       });
-      data.window.forEach((w) => {
-        w.properties.venue_id = venueId;
-        w.properties.zValue = w.geometry.coordinates[0][2];
-      });
+      if (data.window) {
+        data.window.forEach((w) => {
+          w.properties.venue_id = venueId;
+          w.properties.zValue = w.geometry.coordinates[0][2];
+        });
+      }
+
       return data;
     } catch (err) {
       console.error("Error in addVenueIdToAllFeatures:", err);
+      return data.displayName;
     }
   }
 
@@ -260,9 +274,9 @@ export class Utils {
       features: buildingData.unit.map((unit, i) => {
         const matchLevel = levelidMap.get(unit.properties.level_id);
         const properties = unit.properties;
-        if (unit.properties.restriction === "restricted") {
-          properties.category = "restricted";
-        }
+        // if (unit.properties.restriction === "restricted") {
+        //   properties.category = "restricted";
+        // }
         properties.feature_type = "unit";
         properties.buildingType = buildingData.buildingType; // add buildingType to properties
         properties.displayName = buildingData.displayName;

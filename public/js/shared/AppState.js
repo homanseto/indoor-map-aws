@@ -67,7 +67,9 @@ class AppStateManager {
       PNTiles: {
         id: "PNTiles",
         name: "3D Pedestrian Network",
-        url: "http://3dm/dev/bR5B7mxkmjhRhTTroMCo/storage/3dpn/3DPN_v1.0/tileset.json",
+        // url: "http://3dm/dev/bR5B7mxkmjhRhTTroMCo/storage/3dpn/3DPN_v1.0/tileset.json",
+        url: "3dtiles/pedestrian/output/tileset.json",
+        //url: "http://3dmapweb3:8097/b3dm/indoor_network_mtr_3/output/tileset.json",
         defaultOpacity: 1.0,
         defaultVisible: true,
         style: {

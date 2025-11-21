@@ -26,6 +26,7 @@ data/
 
 # testing
 testing-data/
+3dtiles/
 # VSCode
 .vscode/
 

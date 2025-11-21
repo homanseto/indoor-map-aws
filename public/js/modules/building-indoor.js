@@ -137,12 +137,24 @@ export class BuildingIndoor {
 
       // For category-based styling (units, amenities), use category; for others, use styleKey directly
       if (
-        styleKey === "unit" ||
         styleKey === "amenity" ||
-        styleKey === "occupant"
+        styleKey === "occupant" ||
+        styleKey === "unit"
       ) {
         const styledFeatures = featureCollection.features.map((feature) => {
-          const category = feature.properties && feature.properties.category;
+          let category = feature.properties && feature.properties.category;
+          if (category === "opentobelow") {
+            console.log(category);
+          }
+          let restriction =
+            feature.properties && feature.properties.restriction;
+          if (
+            category === "unspecified" &&
+            restriction === "restricted" &&
+            styleKey === "unit"
+          ) {
+            category = "restricted";
+          }
           let style = this.styles[styleKey] && this.styles[styleKey][category];
           if (!style) {
             style =
