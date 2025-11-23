@@ -46,6 +46,9 @@ export class Sidebar {
     this.createLegend();
     this.setupStateManagement();
     this.restoreSidebarState();
+
+    // NEW: Set initial CSS variable for sidebar width
+    document.body.style.setProperty('--sidebar-width', `${this.width}px`);
   }
 
   createSidebar() {
@@ -342,9 +345,8 @@ export class Sidebar {
     if (this.isVisible) return; // Don't show when sidebar is visible
 
     const buttonRect = this.toggleButton.getBoundingClientRect();
-    this.toggleTooltip.style.right = `${
-      window.innerWidth - buttonRect.left + 10
-    }px`;
+    this.toggleTooltip.style.right = `${window.innerWidth - buttonRect.left + 10
+      }px`;
     this.toggleTooltip.style.top = `${buttonRect.top}px`;
     this.toggleTooltip.classList.add("visible");
   }
@@ -370,13 +372,15 @@ export class Sidebar {
       this.width = newWidth;
       this.container.style.width = `${newWidth}px`;
 
+      // NEW: Update CSS variable when resizing
+      document.body.style.setProperty('--sidebar-width', `${newWidth}px`);
+
+
       // Update toggle button position if sidebar is visible
       if (this.isVisible) {
         this.updateTogglePosition();
       }
 
-      // Update info box positioning
-      this.updateInfoBoxPosition();
 
       // Save new width to persistence
       this.saveSidebarState();
@@ -409,7 +413,9 @@ export class Sidebar {
     this.toggleButton.innerHTML = "▶"; // Arrow pointing right
     this.toggleButton.classList.add("sidebar-open");
     this.updateTogglePosition();
-    this.updateInfoBoxPosition();
+
+    // NEW: Add class to body to trigger CSS rules
+    document.body.classList.add('sidebar-open');
     this.saveSidebarState();
   }
 
@@ -419,7 +425,9 @@ export class Sidebar {
     this.toggleButton.innerHTML = "◀"; // Arrow pointing left
     this.toggleButton.classList.remove("sidebar-open");
     this.toggleButton.style.right = "20px"; // Reset to default position
-    this.updateInfoBoxPosition();
+
+    // NEW: Remove class from body
+    document.body.classList.remove('sidebar-open');
     this.saveSidebarState();
   }
 
@@ -431,24 +439,23 @@ export class Sidebar {
     }
   }
 
-  updateInfoBoxPosition() {
-    if (!this.viewer || !this.viewer.infoBox) return;
+  // updateInfoBoxPosition() {
+  //   if (!this.viewer || !this.viewer.infoBox) return;
 
-    const infoBoxContainer = this.viewer.infoBox.container;
-    if (!infoBoxContainer) return;
+  //   const infoBoxContainer = this.viewer.infoBox.container;
+  //   if (!infoBoxContainer) return;
 
-    if (this.isVisible) {
-      // Position info box to the left of sidebar with some margin
-      infoBoxContainer.style.right = `${this.width + 40}px`;
-      infoBoxContainer.style.maxWidth = `${
-        window.innerWidth - this.width - 80
-      }px`;
-    } else {
-      // Reset to default positioning
-      infoBoxContainer.style.right = "20px";
-      infoBoxContainer.style.maxWidth = "";
-    }
-  }
+  //   if (this.isVisible) {
+  //     // Position info box to the left of sidebar with some margin
+  //     infoBoxContainer.style.right = `${this.width + 40}px`;
+  //     infoBoxContainer.style.maxWidth = `${window.innerWidth - this.width - 80
+  //       }px`;
+  //   } else {
+  //     // Reset to default positioning
+  //     infoBoxContainer.style.right = "20px";
+  //     infoBoxContainer.style.maxWidth = "";
+  //   }
+  // }
 
   setupInfoBoxMonitoring() {
     if (!this.viewer || !this.viewer.infoBox) return;
@@ -458,15 +465,9 @@ export class Sidebar {
 
     this.viewer.infoBox._showInfo = (...args) => {
       const result = originalShowInfo.apply(this.viewer.infoBox, args);
-      // Apply our custom positioning after the info box is shown
-      setTimeout(() => this.updateInfoBoxPosition(), 10);
       return result;
     };
 
-    // Monitor window resize
-    window.addEventListener("resize", () => {
-      this.updateInfoBoxPosition();
-    });
   }
 
   createLegend() {
@@ -985,7 +986,7 @@ export class Sidebar {
    */
   onViewModeChanged(is2DMode) {
     if (!this.view2DButton) return;
-
+   
     console.log(
       `[Sidebar] Reacting to view mode change: ${is2DMode ? "2D" : "3D"}`
     );
@@ -1139,6 +1140,7 @@ export class Sidebar {
     persistenceService.saveSidebarState(this.isVisible, this.width);
   }
 
+
   /**
    * Restore sidebar state from persistence
    */
@@ -1202,8 +1204,6 @@ export class Sidebar {
       this.toggleTooltip.parentNode.removeChild(this.toggleTooltip);
     }
 
-    // Clean up event listeners
-    window.removeEventListener("resize", this.updateInfoBoxPosition);
 
     console.log("[Sidebar] Destroyed and cleaned up state listeners");
   }
@@ -1228,3 +1228,4 @@ export function setupInfoBoxMonitoring(viewer) {
     window.mapSidebar.setupInfoBoxMonitoring();
   }
 }
+
