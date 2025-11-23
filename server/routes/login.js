@@ -53,7 +53,7 @@ router.post("/login", async (req, res) => {
       httpOnly: true,
       //   secure: process.env.NODE_ENV === "production", ///add this after we have SSL certificate
       sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000, // 1day
+      maxAge: 60 * 60 * 1000, // 1hour
     });
     res.json({ message: "Login successful" });
   } catch (err) {
