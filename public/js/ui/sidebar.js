@@ -207,18 +207,36 @@ export class Sidebar {
     // Initially disabled until building is selected
     this.updateNetworkButtonState();
 
-    // Event listener for network toggle
+    // Event listener for GLOBAL network toggle
     this.networkToggleButton.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
 
-      // Get the active building's network
-      const venueId = appState.getLastActiveVenueId();
-      const network = appState.getActiveNetwork(venueId);
+      // Toggle GLOBAL network visibility (affects ALL buildings)
+      appState.setNetworkVisible(!appState.getNetworkVisible());
 
-      if (network && typeof network.toggleNetworkVisibility === "function") {
-        network.toggleNetworkVisibility();
-        this.updateNetworkButtonState();
+      // Update ALL loaded networks
+      this.updateAllNetworks();
+
+      // Update button appearance
+      this.updateNetworkButtonState();
+    });
+  }
+
+  /**
+ * Update visibility for ALL loaded networks (global control)
+ */
+  updateAllNetworks() {
+    // Get ALL loaded networks from AppState
+    const allNetworks = appState.getAllActiveNetworks();
+
+    console.log(`[Sidebar] Updating visibility for ${allNetworks.size} networks`);
+
+    // Update visibility for each network
+    allNetworks.forEach((network, venueId) => {
+      if (network && typeof network.updateNetworkVisibility === "function") {
+        network.updateNetworkVisibility();
+        console.log(`[Sidebar] Updated network visibility for venue: ${venueId}`);
       }
     });
   }
@@ -279,36 +297,41 @@ export class Sidebar {
     }
   }
 
+  /**
+ * Update network button state based on GLOBAL network visibility
+ */
   updateNetworkButtonState() {
     if (!this.networkToggleButton) return;
 
-    const venueId = appState.getLastActiveVenueId();
-    const network = appState.getActiveNetwork(venueId);
+    // Get GLOBAL network visibility state
     const networkVisible = appState.getNetworkVisible();
-    const hasNetwork = network !== null;
 
-    // Button enabled only when building with network is loaded
-    this.networkToggleButton.disabled = !hasNetwork;
+    // Get ALL loaded networks (not just active building)
+    const allNetworks = appState.getAllActiveNetworks();
+    const hasAnyNetwork = allNetworks.size > 0;
 
-    // Update button appearance based on network visibility
+    // Button enabled when ANY network is loaded
+    this.networkToggleButton.disabled = !hasAnyNetwork;
+
+    // Update button appearance based on GLOBAL visibility
     this.networkToggleButton.classList.remove("network-visible", "network-hidden");
-    if (networkVisible && hasNetwork) {
+    if (networkVisible && hasAnyNetwork) {
       this.networkToggleButton.classList.add("network-visible");
-    } else if (hasNetwork) {
+    } else if (hasAnyNetwork) {
       this.networkToggleButton.classList.add("network-hidden");
     }
 
     // Update button text
     const buttonText = this.networkToggleButton.querySelector(".network-button-text");
-    if (!hasNetwork) {
-      buttonText.textContent = "No Network";
-      this.networkToggleButton.title = "Select a building with network data";
+    if (!hasAnyNetwork) {
+      buttonText.textContent = "No Networks";
+      this.networkToggleButton.title = "Load a building with network data";
     } else if (networkVisible) {
-      buttonText.textContent = "Hide Indoor Network";
-      this.networkToggleButton.title = "Hide indoor pedestrian network";
+      buttonText.textContent = `Hide All Networks (${allNetworks.size})`;
+      this.networkToggleButton.title = `Hide all ${allNetworks.size} indoor pedestrian networks`;
     } else {
-      buttonText.textContent = "Show Indoor Network";
-      this.networkToggleButton.title = "Show indoor pedestrian network";
+      buttonText.textContent = `Show All Networks (${allNetworks.size})`;
+      this.networkToggleButton.title = `Show all ${allNetworks.size} indoor pedestrian networks`;
     }
   }
 
@@ -1051,11 +1074,34 @@ export class Sidebar {
         console.log(
           `[Sidebar] Network visibility changed: ${data.previous} → ${data.current}`
         );
+
+        // Update ALL networks when global state changes
+        this.updateAllNetworks();
         this.updateNetworkButtonState();
       }
     );
 
     this.stateCleanups.push(networkVisibilityCleanup);
+
+    // Subscribe to network added events (update button when new networks load)
+    const networkAddedCleanup = appState.subscribe(
+      "networkAdded",
+      (data) => {
+        console.log(`[Sidebar] Network added for venue: ${data.venueId}`);
+        this.updateNetworkButtonState();
+      }
+    );
+    this.stateCleanups.push(networkAddedCleanup);
+
+    // Subscribe to network removed events (update button when networks unload)
+    const networkRemovedCleanup = appState.subscribe(
+      "networkRemoved",
+      (data) => {
+        console.log(`[Sidebar] Network removed for venue: ${data.venueId}`);
+        this.updateNetworkButtonState();
+      }
+    );
+    this.stateCleanups.push(networkRemovedCleanup);
 
     console.log("[Sidebar] State management hooks initialized");
   }
@@ -1197,12 +1243,12 @@ export class Sidebar {
 
   /**
    * Update processing state (for loading indicators)
-   */
-  updateProcessingState(isProcessing) {
-    if (!this.view2DButton) return;
-
-    if (isProcessing) {
-      this.view2DButton.disabled = true;
+              
+    dateProcessingState(isProcessing) {
+       (!this.view2DButton) return;
+                                                                        
+          Processing) {
+          .view2DButton.disabled = true;
       this.view2DButton.classList.add("processing");
     } else {
       // Re-enable based on building availability
@@ -1210,16 +1256,16 @@ export class Sidebar {
       this.view2DButton.disabled = !hasActiveBuilding;
       this.view2DButton.classList.remove("processing");
     }
-  }
+            
 
-  /**
-   * Save current sidebar state to persistence
-   */
+    *
+      ave current sidebar state to persistence
+    /
   saveSidebarState() {
     persistenceService.saveSidebarState(this.isVisible, this.width);
   }
-
-
+                           
+                           
   /**
    * Restore sidebar state from persistence
    */

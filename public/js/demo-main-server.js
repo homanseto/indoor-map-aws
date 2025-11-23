@@ -73,16 +73,16 @@ function handleIndoorFeatureClick(selectedEntity) {
     buildingIndoor.initLevelBar();
   }
 
-  // Reset network visibility to shown and update toggle button
-  const network = appState.getActiveNetwork(venueId);
-  if (network) {
-    if (typeof network.showNetwork === "function") {
-      network.showNetwork(); // Auto-reset to visible
-    }
-    // if (typeof network.initNetworkToggle === "function") {
-    //   network.initNetworkToggle(); // Reinitialize toggle button
-    // }
-  }
+  // // Reset network visibility to shown and update toggle button
+  // const network = appState.getActiveNetwork(venueId);
+  // if (network) {
+  //   if (typeof network.showNetwork === "function") {
+  //     network.showNetwork(); // Auto-reset to visible
+  //   }
+  //   // if (typeof network.initNetworkToggle === "function") {
+  //   //   network.initNetworkToggle(); // Reinitialize toggle button
+  //   // }
+  // }
 
   // Set as new active venue
   appState.setLastActiveVenueId(venueId);
@@ -395,16 +395,16 @@ function setupVenueClickInteraction() {
                   buildingIndoor.initLevelBar();
                 }
 
-                // Reset network visibility to shown and update toggle button
-                const network = appState.getActiveNetwork(venueId);
-                if (network) {
-                  if (typeof network.showNetwork === "function") {
-                    network.showNetwork(); // Auto-reset to visible
-                  }
-                  // if (typeof network.initNetworkToggle === "function") {
-                  //   network.initNetworkToggle(); // Reinitialize toggle button
-                  // }
-                }
+                // // Reset network visibility to shown and update toggle button
+                // const network = appState.getActiveNetwork(venueId);
+                // if (network) {
+                //   if (typeof network.showNetwork === "function") {
+                //     network.showNetwork(); // Auto-reset to visible
+                //   }
+                //   // if (typeof network.initNetworkToggle === "function") {
+                //   //   network.initNetworkToggle(); // Reinitialize toggle button
+                //   // }
+                // }
 
                 appState.setLastActiveVenueId(venueId);
                 return;
@@ -701,16 +701,16 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
         await building.resetLevelBarAndShowAll();
       }
 
-      // Reset network visibility
-      const network = appState.getActiveNetwork(venueId);
-      if (network) {
-        if (typeof network.showNetwork === "function") {
-          network.showNetwork();
-        }
-        // if (typeof network.initNetworkToggle === "function") {
-        //   network.initNetworkToggle();
-        // }
-      }
+      // // Reset network visibility
+      // const network = appState.getActiveNetwork(venueId);
+      // if (network) {
+      //   if (typeof network.showNetwork === "function") {
+      //     network.showNetwork();
+      //   }
+      //   // if (typeof network.initNetworkToggle === "function") {
+      //   //   network.initNetworkToggle();
+      //   // }
+      // }
 
       // Initialize level bar for the selected building
       if (typeof building.initLevelBar === "function") {
