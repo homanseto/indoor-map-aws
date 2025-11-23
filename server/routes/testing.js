@@ -46,10 +46,23 @@ router.get("/test-db", async (req, res) => {
 
 // GET /test-read-json?file=filename.json
 router.get("/test-read-json", async (req, res) => {
-  const testDir = "./testing-data/update/20251121";
-  const jsonfiles = await fs.readdirSync(testDir);
+  const testDir = "./testing-data/indoor/latest";
   const failedList = [];
   try {
+    const jsonfiles = await fs.readdirSync(testDir);
+    if (!fs.existsSync(testDir)) {
+      return res.status(404).json({
+        error: "Directory not found",
+        path: testDir,
+        message: "Please ensure testing-data directory is mounted or exists",
+      });
+    }
+    if (jsonfiles.length === 0) {
+      return res.status(404).json({
+        error: "No JSON files found",
+        path: testDir,
+      });
+    }
     for (let jf of jsonfiles) {
       const filePath = path.join(testDir, jf);
       if (!filePath) {
@@ -65,7 +78,12 @@ router.get("/test-read-json", async (req, res) => {
       }
       console.log("Read JSON from", filePath, ":", json);
     }
-    res.json(failedList);
+    res.json({
+      success: true,
+      processedFiles: jsonfiles.length,
+      failedFiles: failedList.length,
+      failures: failedList,
+    });
   } catch (err) {
     console.error("Error reading JSON file:", err.message);
     res.status(500).json({ error: "Failed to read or parse file" });
@@ -91,22 +109,19 @@ router.get("/test-venue-data-by-buildingType", async (req, res) => {
 
 // POST /testing/import-indoor-network - Import indoor network data from JSON to PostGIS
 router.post("/import-indoor-network", async (req, res) => {
+  const testDir = "./testing-data/network/latest";
+  const failedList = [];
   try {
-    const { filePath, batchSize = 50, clearExisting = true } = req.body;
+    const { batchSize = 50, clearExisting = true } = req.body;
 
-    // Validate required parameters
-    if (!filePath) {
-      return res.status(400).json({
-        success: false,
-        error: "Missing required field: filePath",
+    const jsonfiles = await fs.promises.readdir(testDir);
+    if (!fs.existsSync(testDir)) {
+      return res.status(404).json({
+        error: "Directory not found",
+        path: testDir,
+        message: "Please ensure testing-data directory is mounted or exists",
       });
     }
-
-    // Construct full path relative to project root
-    const fullPath = path.join("./testing-data/network", filePath);
-
-    console.log(`🚀 Starting indoor network import request for: ${fullPath}`);
-
     // Test PostGIS connection first
     const connectionOk = await postgisService.testConnection();
     if (!connectionOk) {
@@ -118,34 +133,45 @@ router.post("/import-indoor-network", async (req, res) => {
 
     // Track progress for API response
     let progressData = {};
-    const progressCallback = (progress) => {
-      progressData = progress;
-      console.log(
-        `📊 Import Progress: ${progress.progressPercent}% (Batch ${progress.batchIndex}/${progress.totalBatches})`
-      );
-    };
-
-    // Execute the import
-    const importResults = await networkService.importIndoorNetwork(fullPath, {
-      batchSize: parseInt(batchSize),
-      clearExisting: Boolean(clearExisting),
-      progressCallback,
-    });
-
-    console.log(`✅ Import completed successfully:`, importResults);
+    for (let jf of jsonfiles) {
+      const filePath = path.join(testDir, jf);
+      if (!filePath) {
+        return res
+          .status(400)
+          .json({ error: "Missing 'file' query parameter" });
+      }
+      const progressCallback = (progress) => {
+        progressData = progress;
+        console.log(
+          `📊 Import Progress: ${progress.progressPercent}% (Batch ${progress.batchIndex}/${progress.totalBatches})`
+        );
+      };
+      // Execute the import
+      const importResults = await networkService.importIndoorNetwork(filePath, {
+        batchSize: parseInt(batchSize),
+        clearExisting: Boolean(clearExisting),
+        progressCallback,
+      });
+      if (!importResults || !importResults.success) {
+        failedList.push({
+          file: jf,
+          error: importResults.error,
+        });
+      }
+    }
 
     // Return comprehensive results
     res.status(200).json({
       success: true,
       message: "Indoor network import completed successfully",
-      results: importResults,
-      finalProgress: progressData,
+      failedList: failedList,
     });
   } catch (error) {
     console.error(`❌ Import failed:`, error);
 
     res.status(500).json({
       success: false,
+      failedList: failedList,
       error: error.message,
       type: "ImportError",
     });
