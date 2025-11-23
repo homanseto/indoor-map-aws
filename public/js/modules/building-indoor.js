@@ -791,7 +791,7 @@ export class BuildingIndoor {
       Math.min(
         1,
         ((point.lon - lineStart.lon) * dx + (point.lat - lineStart.lat) * dy) /
-          (dx * dx + dy * dy)
+        (dx * dx + dy * dy)
       )
     );
 
@@ -935,7 +935,7 @@ export class BuildingIndoor {
     if (!this.levelBarEl) return;
     const levelsRaw =
       this.buildingData.levels &&
-      Array.isArray(this.buildingData.levels.features)
+        Array.isArray(this.buildingData.levels.features)
         ? this.buildingData.levels.features
         : [];
     const levels = levelsRaw
@@ -1037,7 +1037,7 @@ export class BuildingIndoor {
     // Get all levels, sorted by zValue descending (for UI), but for filtering, use zValue
     const levelsRaw =
       this.buildingData.levels &&
-      Array.isArray(this.buildingData.levels.features)
+        Array.isArray(this.buildingData.levels.features)
         ? this.buildingData.levels.features
         : [];
     const levels = levelsRaw
@@ -1095,7 +1095,7 @@ export class BuildingIndoor {
     if (this.highlightEntity) {
       const parentEntityId =
         this.highlightEntity.properties &&
-        this.highlightEntity.properties.parent_entity
+          this.highlightEntity.properties.parent_entity
           ? this.highlightEntity.properties.parent_entity.getValue
             ? this.highlightEntity.properties.parent_entity.getValue()
             : this.highlightEntity.properties.parent_entity
@@ -1148,7 +1148,7 @@ export class BuildingIndoor {
         // Reset polygon material to original style
         const featureType =
           this.selectedEntity.properties &&
-          this.selectedEntity.properties.feature_type
+            this.selectedEntity.properties.feature_type
             ? this.selectedEntity.properties.feature_type.getValue
               ? this.selectedEntity.properties.feature_type.getValue()
               : this.selectedEntity.properties.feature_type
@@ -1157,7 +1157,7 @@ export class BuildingIndoor {
         if (featureType === "unit") {
           const category =
             this.selectedEntity.properties &&
-            this.selectedEntity.properties.category
+              this.selectedEntity.properties.category
               ? this.selectedEntity.properties.category.getValue
                 ? this.selectedEntity.properties.category.getValue()
                 : this.selectedEntity.properties.category
@@ -1176,7 +1176,7 @@ export class BuildingIndoor {
           // Restore original door material
           const category =
             this.selectedEntity.properties &&
-            this.selectedEntity.properties.category
+              this.selectedEntity.properties.category
               ? this.selectedEntity.properties.category.getValue
                 ? this.selectedEntity.properties.category.getValue()
                 : this.selectedEntity.properties.category
@@ -1319,7 +1319,7 @@ export class BuildingIndoor {
     if (this.highlightEntity) {
       const parentEntityId =
         this.highlightEntity.properties &&
-        this.highlightEntity.properties.parent_entity
+          this.highlightEntity.properties.parent_entity
           ? this.highlightEntity.properties.parent_entity.getValue
             ? this.highlightEntity.properties.parent_entity.getValue()
             : this.highlightEntity.properties.parent_entity
@@ -1392,12 +1392,12 @@ export class BuildingIndoor {
         const currentIndex = sortedLevels.indexOf(currentZ);
         let wallHeight = 2.0; // Default height for top level or fallback
 
-        if (currentIndex < sortedLevels.length - 1) {
-          // Not the top level - use distance to next level
-          wallHeight = sortedLevels[currentIndex + 1] - currentZ;
-        }
+        // if (currentIndex < sortedLevels.length - 1) {
+        //   // Not the top level - use distance to next level
+        //   wallHeight = sortedLevels[currentIndex + 1] - currentZ;
+        // }
 
-        ///default 2.5m
+        ///default 2.8m
         wallHeight = 2.8;
         // Create wall entity from unit polygon
         const wallEntity = this.createWallFromPolygon(
@@ -1560,7 +1560,7 @@ export class BuildingIndoor {
     baseHeight,
     doorHeight,
     openingId,
-    category = "default",
+    category,
     properties = {}
   ) {
     if (!coordinates || coordinates.length < 2) {
@@ -1570,15 +1570,14 @@ export class BuildingIndoor {
 
     try {
       // Convert polyline coordinates to Cesium format
-      const positions = [];
+      const points = [];
       coordinates.forEach((coord) => {
         if (coord.length >= 2) {
-          positions.push(coord[0], coord[1]); // lon, lat
+          points.push({ lon: coord[0], lat: coord[1] });
         }
       });
 
-      if (positions.length < 4) {
-        // Need at least 2 points (4 values)
+      if (points.length < 2) {
         console.warn(`Insufficient coordinates for door ${openingId}`);
         return null;
       }
@@ -1586,42 +1585,25 @@ export class BuildingIndoor {
       // Create door as a thin rectangular polygon from the polyline
       // Use the polyline to create a thin rectangle representing the door
       const doorWidth = 0.1; // 10cm thick door
-      const startPoint = [positions[0], positions[1]];
-      const endPoint = [
-        positions[positions.length - 2],
-        positions[positions.length - 1],
-      ];
+      const doorPolygon = this.createPolygonStripFromPolyline(points, doorWidth);
 
-      // Calculate perpendicular direction for door thickness
-      const dx = endPoint[0] - startPoint[0];
-      const dy = endPoint[1] - startPoint[1];
-      const length = Math.sqrt(dx * dx + dy * dy);
-      /// approximate both latitude and longitude degrees as 111000 meters per degree.
-      const perpX = ((-dy / length) * doorWidth) / 111000; // Approximate degrees conversion
-      const perpY = ((dx / length) * doorWidth) / 111000;
-
-      // Create door rectangle coordinates
-      const doorCoords = [
-        [startPoint[0] + perpX, startPoint[1] + perpY],
-        [endPoint[0] + perpX, endPoint[1] + perpY],
-        [endPoint[0] - perpX, endPoint[1] - perpY],
-        [startPoint[0] - perpX, startPoint[1] - perpY],
-        [startPoint[0] + perpX, startPoint[1] + perpY], // Close the polygon
-      ];
+      if (!doorPolygon || doorPolygon.length < 3) {
+        console.warn(`Failed to create polygon strip for door ${openingId}`);
+        return null;
+      }
 
       // Convert to flat array for Cesium
       const doorPositions = [];
-      doorCoords.forEach((coord) => {
-        doorPositions.push(coord[0], coord[1]);
+      doorPolygon.forEach((coord) => {
+        doorPositions.push(coord.lon, coord.lat);
       });
-
       // Create Cesium positions from coordinates
       const cesiumPositions = Cesium.Cartesian3.fromDegreesArray(doorPositions);
 
       // Get door style based on category
       const doorStyle = this.styles.door[category] || this.styles.door.default;
 
-      const newProperties = properties;
+      const newProperties = { ...properties };
       delete newProperties.feature_type;
       // Create door entity
       const doorEntity = new Cesium.Entity({
@@ -1660,5 +1642,114 @@ export class BuildingIndoor {
       );
       return null;
     }
+  }
+
+
+  /**
+   * Create a polygon strip from a polyline with specified width
+   * This creates a thick "band" following the polyline path
+   * @param {Array} points - Array of {lon, lat} points
+   * @param {number} widthMeters - Width of the strip in meters
+   * @returns {Array} Array of {lon, lat} points forming a closed polygon
+   */
+  createPolygonStripFromPolyline(points, widthMeters) {
+    if (!points || points.length < 2) {
+      return null;
+    }
+
+    // Approximate conversion: 1 degree ≈ 111,000 meters at equator
+    // For Hong Kong (latitude ~22°), we use a slightly adjusted factor
+    const metersPerDegree = 111000;
+    const widthDegrees = widthMeters / metersPerDegree;
+
+    const leftSide = [];
+    const rightSide = [];
+
+    // For each segment of the polyline, calculate perpendicular offset
+    for (let i = 0; i < points.length; i++) {
+      const current = points[i];
+      let perpX, perpY;
+
+      if (i === 0) {
+        // First point: use direction to next point
+        const next = points[i + 1];
+        const dx = next.lon - current.lon;
+        const dy = next.lat - current.lat;
+        const length = Math.sqrt(dx * dx + dy * dy);
+
+        if (length > 0) {
+          perpX = (-dy / length) * widthDegrees / 2;
+          perpY = (dx / length) * widthDegrees / 2;
+        } else {
+          perpX = 0;
+          perpY = 0;
+        }
+      } else if (i === points.length - 1) {
+        // Last point: use direction from previous point
+        const prev = points[i - 1];
+        const dx = current.lon - prev.lon;
+        const dy = current.lat - prev.lat;
+        const length = Math.sqrt(dx * dx + dy * dy);
+
+        if (length > 0) {
+          perpX = (-dy / length) * widthDegrees / 2;
+          perpY = (dx / length) * widthDegrees / 2;
+        } else {
+          perpX = 0;
+          perpY = 0;
+        }
+      } else {
+        // Middle points: average the perpendicular from both adjacent segments
+        const prev = points[i - 1];
+        const next = points[i + 1];
+
+        // Direction from previous to current
+        const dx1 = current.lon - prev.lon;
+        const dy1 = current.lat - prev.lat;
+        const len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+
+        // Direction from current to next
+        const dx2 = next.lon - current.lon;
+        const dy2 = next.lat - current.lat;
+        const len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+
+        // Calculate perpendiculars
+        let perp1X = 0, perp1Y = 0, perp2X = 0, perp2Y = 0;
+
+        if (len1 > 0) {
+          perp1X = (-dy1 / len1) * widthDegrees / 2;
+          perp1Y = (dx1 / len1) * widthDegrees / 2;
+        }
+
+        if (len2 > 0) {
+          perp2X = (-dy2 / len2) * widthDegrees / 2;
+          perp2Y = (dx2 / len2) * widthDegrees / 2;
+        }
+
+        // Average the perpendiculars for smooth corners
+        perpX = (perp1X + perp2X) / 2;
+        perpY = (perp1Y + perp2Y) / 2;
+      }
+
+      // Add offset points to both sides
+      leftSide.push({
+        lon: current.lon + perpX,
+        lat: current.lat + perpY,
+      });
+
+      rightSide.push({
+        lon: current.lon - perpX,
+        lat: current.lat - perpY,
+      });
+    }
+
+    // Combine left side + reversed right side to form closed polygon
+    // Left side goes forward, right side goes backward to close the loop
+    const polygon = [...leftSide, ...rightSide.reverse()];
+
+    // Close the polygon by adding the first point at the end
+    polygon.push({ ...leftSide[0] });
+
+    return polygon;
   }
 }
