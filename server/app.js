@@ -35,8 +35,10 @@ app.get("/indoor-viewer.html", (req, res) => {
 
 app.use(express.static(path.resolve("public")));
 
+/////cannot set this, "Serve EVERY file from the project root directory as a public file"
+//app.use(express.static(path.resolve(".")));
 // Serve 3D tiles and other root-level static assets
-app.use(express.static(path.resolve(".")));
+app.use("/3dtiles", express.static(path.resolve("3dtiles")));
 
 // // Before mounting routes
 const csrfProtection = csurf({ cookie: true });

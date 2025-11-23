@@ -8,7 +8,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: rgba(42, 42, 42, 0.85); /* Cesium infoBox dark background */
+  background: rgba(42, 42, 42, 0.85);
+  /* Cesium infoBox dark background */
   border-radius: 1rem;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
   border: 1px solid #444;
@@ -16,6 +17,31 @@
   min-width: 60px;
   max-width: 120px;
   backdrop-filter: blur(4px);
+  /* Restrict height to avoid overlapping with bottom controls */
+  max-height: calc(100vh - 300px);
+  /* Enable vertical scrolling if content exceeds max-height */
+  overflow-y: auto;
+  /* Thin scrollbar for Firefox */
+  scrollbar-width: thin;
+}
+
+/* Custom scrollbar styling for Webkit browsers (Chrome, Safari) */
+.level-bar-bootstrap::-webkit-scrollbar {
+  width: 6px;
+}
+
+.level-bar-bootstrap::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.level-bar-bootstrap::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.level-bar-bootstrap::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .level-bar-bootstrap .level-btn {
