@@ -155,6 +155,10 @@ export class Sidebar {
     this.createWallToggleButton();
     viewSection.appendChild(this.wallToggleButton);
 
+    // ✅ ADD NETWORK TOGGLE BUTTON under PNTiles toggle
+    this.createNetworkToggleButton();
+    viewSection.appendChild(this.networkToggleButton);
+
     // ✅ ADD PNTILES TOGGLE BUTTON under wall toggle
     this.createPNTilesToggleButton();
     viewSection.appendChild(this.pnTilesToggleButton);
@@ -187,6 +191,35 @@ export class Sidebar {
       e.preventDefault();
       e.stopPropagation();
       appState.toggleWallsVisible();
+    });
+  }
+
+  createNetworkToggleButton() {
+    // Create Indoor Network visibility toggle button
+    this.networkToggleButton = document.createElement("button");
+    this.networkToggleButton.className = "network-toggle-button";
+    this.networkToggleButton.innerHTML = `
+    <span class="network-icon">🌐</span>
+    <span class="network-button-text">Toggle Indoor Network</span>
+  `;
+    this.networkToggleButton.title = "Show/Hide indoor pedestrian network";
+
+    // Initially disabled until building is selected
+    this.updateNetworkButtonState();
+
+    // Event listener for network toggle
+    this.networkToggleButton.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Get the active building's network
+      const venueId = appState.getLastActiveVenueId();
+      const network = appState.getActiveNetwork(venueId);
+
+      if (network && typeof network.toggleNetworkVisibility === "function") {
+        network.toggleNetworkVisibility();
+        this.updateNetworkButtonState();
+      }
     });
   }
 
@@ -243,6 +276,39 @@ export class Sidebar {
       this.wallToggleButton.title = wallsVisible
         ? "Hide building walls"
         : "Show building walls";
+    }
+  }
+
+  updateNetworkButtonState() {
+    if (!this.networkToggleButton) return;
+
+    const venueId = appState.getLastActiveVenueId();
+    const network = appState.getActiveNetwork(venueId);
+    const networkVisible = appState.getNetworkVisible();
+    const hasNetwork = network !== null;
+
+    // Button enabled only when building with network is loaded
+    this.networkToggleButton.disabled = !hasNetwork;
+
+    // Update button appearance based on network visibility
+    this.networkToggleButton.classList.remove("network-visible", "network-hidden");
+    if (networkVisible && hasNetwork) {
+      this.networkToggleButton.classList.add("network-visible");
+    } else if (hasNetwork) {
+      this.networkToggleButton.classList.add("network-hidden");
+    }
+
+    // Update button text
+    const buttonText = this.networkToggleButton.querySelector(".network-button-text");
+    if (!hasNetwork) {
+      buttonText.textContent = "No Network";
+      this.networkToggleButton.title = "Select a building with network data";
+    } else if (networkVisible) {
+      buttonText.textContent = "Hide Indoor Network";
+      this.networkToggleButton.title = "Hide indoor pedestrian network";
+    } else {
+      buttonText.textContent = "Show Indoor Network";
+      this.networkToggleButton.title = "Show indoor pedestrian network";
     }
   }
 
@@ -978,6 +1044,19 @@ export class Sidebar {
     });
     this.stateCleanups.push(tilesetAddedCleanup);
 
+    // ✅ NEW: Subscribe to network visibility changes
+    const networkVisibilityCleanup = appState.subscribe(
+      "networkVisibilityChanged",
+      (data) => {
+        console.log(
+          `[Sidebar] Network visibility changed: ${data.previous} → ${data.current}`
+        );
+        this.updateNetworkButtonState();
+      }
+    );
+
+    this.stateCleanups.push(networkVisibilityCleanup);
+
     console.log("[Sidebar] State management hooks initialized");
   }
 
@@ -986,7 +1065,7 @@ export class Sidebar {
    */
   onViewModeChanged(is2DMode) {
     if (!this.view2DButton) return;
-   
+
     console.log(
       `[Sidebar] Reacting to view mode change: ${is2DMode ? "2D" : "3D"}`
     );
@@ -1172,9 +1251,34 @@ export class Sidebar {
   // Legacy methods for backward compatibility (now use state management)
   setBuildingContext(buildingIndoor, venueId) {
     console.log(
-      `[Sidebar] setBuildingContext called (legacy) - using state management instead`
+      `[Sidebar] Setting building context for venue: ${venueId}`,
+      buildingIndoor
     );
-    // The ViewControllerManager will handle this via state
+
+    this.buildingInstance = buildingIndoor;
+    this.currentVenueId = venueId;
+
+    // Enable 2D view button when building is loaded
+    if (this.view2DButton) {
+      this.view2DButton.disabled = false;
+      const statusIndicator = this.viewControls.querySelector(
+        ".view-status-indicator"
+      );
+      if (statusIndicator) {
+        statusIndicator.textContent = "Building loaded - 2D view available";
+      }
+    }
+
+    // Update wall button state
+    this.updateWallButtonState();
+
+    // Update PNTiles button state
+    this.updatePNTilesButtonState();
+
+    // ✅ NEW: Update network button state
+    this.updateNetworkButtonState();
+
+    console.log("[Sidebar] Building context set successfully");
   }
 
   clearBuildingContext() {

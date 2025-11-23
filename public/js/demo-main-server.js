@@ -79,9 +79,9 @@ function handleIndoorFeatureClick(selectedEntity) {
     if (typeof network.showNetwork === "function") {
       network.showNetwork(); // Auto-reset to visible
     }
-    if (typeof network.initNetworkToggle === "function") {
-      network.initNetworkToggle(); // Reinitialize toggle button
-    }
+    // if (typeof network.initNetworkToggle === "function") {
+    //   network.initNetworkToggle(); // Reinitialize toggle button
+    // }
   }
 
   // Set as new active venue
@@ -341,7 +341,7 @@ function setupVenueClickInteraction() {
           if (
             tilesetUrl &&
             tilesetUrl ===
-              "https://data.map.gov.hk/api/3d-data/3dtiles/f2/tileset.json?key=3967f8f365694e0798af3e7678509421"
+            "https://data.map.gov.hk/api/3d-data/3dtiles/f2/tileset.json?key=3967f8f365694e0798af3e7678509421"
           ) {
             return false; // Skip only threeDTiles
           }
@@ -401,9 +401,9 @@ function setupVenueClickInteraction() {
                   if (typeof network.showNetwork === "function") {
                     network.showNetwork(); // Auto-reset to visible
                   }
-                  if (typeof network.initNetworkToggle === "function") {
-                    network.initNetworkToggle(); // Reinitialize toggle button
-                  }
+                  // if (typeof network.initNetworkToggle === "function") {
+                  //   network.initNetworkToggle(); // Reinitialize toggle button
+                  // }
                 }
 
                 appState.setLastActiveVenueId(venueId);
@@ -439,10 +439,10 @@ function setupVenueClickInteraction() {
                   if (typeof indoorNetwork.show === "function") {
                     indoorNetwork.show();
                   }
-                  // Initialize network toggle button (positioned below level selection bar)
-                  if (typeof indoorNetwork.initNetworkToggle === "function") {
-                    indoorNetwork.initNetworkToggle();
-                  }
+                  // // Initialize network toggle button (positioned below level selection bar)
+                  // if (typeof indoorNetwork.initNetworkToggle === "function") {
+                  //   indoorNetwork.initNetworkToggle();
+                  // }
                 } else {
                   console.error(
                     "Failed to fetch network data:",
@@ -707,9 +707,9 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
         if (typeof network.showNetwork === "function") {
           network.showNetwork();
         }
-        if (typeof network.initNetworkToggle === "function") {
-          network.initNetworkToggle();
-        }
+        // if (typeof network.initNetworkToggle === "function") {
+        //   network.initNetworkToggle();
+        // }
       }
 
       // Initialize level bar for the selected building
@@ -804,9 +804,9 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
       if (typeof indoorNetwork.show === "function") {
         indoorNetwork.show();
       }
-      if (typeof indoorNetwork.initNetworkToggle === "function") {
-        indoorNetwork.initNetworkToggle();
-      }
+      // if (typeof indoorNetwork.initNetworkToggle === "function") {
+      //   indoorNetwork.initNetworkToggle();
+      // }
     }
 
     // Load building data

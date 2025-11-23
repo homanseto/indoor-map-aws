@@ -158,77 +158,82 @@ export class IndoorNetwork {
 
   // Update toggle button appearance
   updateToggleButton() {
-    if (!this.toggleButtonEl) return;
+    // if (!this.toggleButtonEl) return;
 
-    if (appState.getNetworkVisible()) {
-      this.toggleButtonEl.textContent = "Hide Network";
-      this.toggleButtonEl.classList.remove("btn-outline-success");
-      this.toggleButtonEl.classList.add("btn-success");
-    } else {
-      this.toggleButtonEl.textContent = "Show Network";
-      this.toggleButtonEl.classList.remove("btn-success");
-      this.toggleButtonEl.classList.add("btn-outline-success");
+    // if (appState.getNetworkVisible()) {
+    //   this.toggleButtonEl.textContent = "Hide Network";
+    //   this.toggleButtonEl.classList.remove("btn-outline-success");
+    //   this.toggleButtonEl.classList.add("btn-success");
+    // } else {
+    //   this.toggleButtonEl.textContent = "Show Network";
+    //   this.toggleButtonEl.classList.remove("btn-success");
+    //   this.toggleButtonEl.classList.add("btn-outline-success");
+    // }
+    // Notify sidebar to update button state
+    const sidebar = appState.getMapSidebar();
+    if (sidebar && typeof sidebar.updateNetworkButtonState === "function") {
+      sidebar.updateNetworkButtonState();
     }
   }
 
-  // Initialize network toggle button UI (positioned below level selection bar)
-  initNetworkToggle() {
-    // Find the level bar container to position the button below it
-    const levelBarContainer = document.getElementById("levelBarContainer");
-    if (!levelBarContainer) {
-      console.warn(
-        "Level bar container not found, cannot create network toggle"
-      );
-      return;
-    }
+  // // Initialize network toggle button UI (positioned below level selection bar)
+  // initNetworkToggle() {
+  //   // Find the level bar container to position the button below it
+  //   const levelBarContainer = document.getElementById("levelBarContainer");
+  //   if (!levelBarContainer) {
+  //     console.warn(
+  //       "Level bar container not found, cannot create network toggle"
+  //     );
+  //     return;
+  //   }
 
-    // Create network toggle container
-    let networkToggleContainer = document.getElementById(
-      "networkToggleContainer"
-    );
-    if (!networkToggleContainer) {
-      networkToggleContainer = document.createElement("div");
-      networkToggleContainer.id = "networkToggleContainer";
-      networkToggleContainer.className = "network-toggle-container mt-3 mb-2";
-      networkToggleContainer.style.display = "flex";
-      networkToggleContainer.style.flexDirection = "column";
-      networkToggleContainer.style.alignItems = "center";
+  //   // Create network toggle container
+  //   let networkToggleContainer = document.getElementById(
+  //     "networkToggleContainer"
+  //   );
+  //   if (!networkToggleContainer) {
+  //     networkToggleContainer = document.createElement("div");
+  //     networkToggleContainer.id = "networkToggleContainer";
+  //     networkToggleContainer.className = "network-toggle-container mt-3 mb-2";
+  //     networkToggleContainer.style.display = "flex";
+  //     networkToggleContainer.style.flexDirection = "column";
+  //     networkToggleContainer.style.alignItems = "center";
 
-      // Insert after the level bar container
-      levelBarContainer.parentNode.insertBefore(
-        networkToggleContainer,
-        levelBarContainer.nextSibling
-      );
-    } else {
-      // Clear existing content
-      networkToggleContainer.innerHTML = "";
-    }
+  //     // Insert after the level bar container
+  //     levelBarContainer.parentNode.insertBefore(
+  //       networkToggleContainer,
+  //       levelBarContainer.nextSibling
+  //     );
+  //   } else {
+  //     // Clear existing content
+  //     networkToggleContainer.innerHTML = "";
+  //   }
 
-    // Create the toggle button
-    this.toggleButtonEl = document.createElement("button");
-    this.toggleButtonEl.className = "btn btn-success mb-2";
-    this.toggleButtonEl.style.minWidth = "120px";
-    this.toggleButtonEl.addEventListener("click", () => {
-      this.toggleNetworkVisibility();
-    });
+  //   // Create the toggle button
+  //   this.toggleButtonEl = document.createElement("button");
+  //   this.toggleButtonEl.className = "btn btn-success mb-2";
+  //   this.toggleButtonEl.style.minWidth = "120px";
+  //   this.toggleButtonEl.addEventListener("click", () => {
+  //     this.toggleNetworkVisibility();
+  //   });
 
-    // Add button to container
-    networkToggleContainer.appendChild(this.toggleButtonEl);
+  //   // Add button to container
+  //   networkToggleContainer.appendChild(this.toggleButtonEl);
 
-    // Initialize button state
-    this.updateToggleButton();
+  //   // Initialize button state
+  //   this.updateToggleButton();
 
-    console.log("✅ Network toggle button initialized");
-  }
+  //   console.log("✅ Network toggle button initialized");
+  // }
 
-  // Clean up network toggle UI
-  destroyNetworkToggle() {
-    const networkToggleContainer = document.getElementById(
-      "networkToggleContainer"
-    );
-    if (networkToggleContainer) {
-      networkToggleContainer.remove();
-    }
-    this.toggleButtonEl = null;
-  }
+  // // Clean up network toggle UI
+  // destroyNetworkToggle() {
+  //   const networkToggleContainer = document.getElementById(
+  //     "networkToggleContainer"
+  //   );
+  //   if (networkToggleContainer) {
+  //     networkToggleContainer.remove();
+  //   }
+  //   this.toggleButtonEl = null;
+  // }
 }

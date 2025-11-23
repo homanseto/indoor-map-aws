@@ -851,6 +851,83 @@
   }
 }
 
+/* Network Toggle Button Styles */
+.network-toggle-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  margin-top: 8px;
+  background: #fff;
+  border: 2px solid #17a2b8;
+  border-radius: 6px;
+  color: #17a2b8;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  pointer-events: auto;
+  position: relative;
+  z-index: 1000;
+  width: 100%;
+}
+
+.network-toggle-button:hover:not(:disabled) {
+  background: #17a2b8;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(23, 162, 184, 0.3);
+}
+
+.network-toggle-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.network-toggle-button:disabled {
+  background: #f8f9fa;
+  border-color: #dee2e6;
+  color: #adb5bd;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.network-toggle-button.network-visible {
+  background: #d1ecf1;
+  border-color: #17a2b8;
+  color: #0c5460;
+}
+
+.network-toggle-button.network-visible:hover:not(:disabled) {
+  background: #17a2b8;
+  border-color: #138496;
+  color: white;
+}
+
+.network-toggle-button.network-hidden {
+  background: #fff3cd;
+  border-color: #ffc107;
+  color: #856404;
+}
+
+.network-toggle-button.network-hidden:hover:not(:disabled) {
+  background: #ffc107;
+  border-color: #e0a800;
+  color: white;
+}
+
+.network-icon {
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+.network-button-text {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 /* Move info box to the left when sidebar is visible */
 body.sidebar-open .cesium-infoBox {
   right: calc(var(--sidebar-width, 320px) + 40px) !important;
