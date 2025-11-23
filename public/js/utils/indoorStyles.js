@@ -530,6 +530,17 @@ export const indoorStyles = {
     },
     // Add more categories as needed - they'll fall back to default if not specified
   },
+  "window-wall": {
+    default: {
+      material: new Cesium.ColorMaterialProperty(
+        new Cesium.Color(0.7, 0.3, 0.8, 0.5)
+      ), // Purple with some transparency
+      outline: true,
+      outlineColor: new Cesium.Color(0.4, 0.2, 0.1, 0.8), // Darker brown outline
+      extrudedHeight: 0, // Will be set dynamically
+      height: 0, // Will be set dynamically
+    },
+  },
   door: {
     // Default door styling with transparency - similar to walls but more transparent
     pedestrian: {

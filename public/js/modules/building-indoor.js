@@ -123,6 +123,31 @@ export class BuildingIndoor {
       console.log(`Added ${doorEntities.length} door entities to viewer`);
     }
 
+    // ✅ NEW: Generate and add 3D window-walls for windows
+    console.log("Generating 3D window-walls for building windows...");
+    const windowWallEntities = this.generateWindowWalls();
+    if (windowWallEntities.length > 0) {
+      const windowWallDataSource = new Cesium.CustomDataSource("window_walls");
+      // Get the original window features for customization
+      const windowFeatures = this.buildingData.windows.features;
+
+      windowWallEntities.forEach((windowWallEntity) => {
+        // Find the corresponding window feature for this window-wall
+        const originalWindow = windowFeatures.find(
+          (window) => windowWallEntity.id === `window-wall_${window.id}`
+        );
+        if (originalWindow) {
+          customizeEntityDisplayInfo(windowWallEntity, originalWindow);
+        }
+        windowWallDataSource.entities.add(windowWallEntity);
+      });
+      this.viewer.dataSources.add(windowWallDataSource);
+      this.dataSources["window-walls"] = windowWallDataSource;
+      console.log(
+        `Added ${windowWallEntities.length} window-wall entities to viewer`
+      );
+    }
+
     for (const { dataKey, styleKey } of featureTypes) {
       if (dataKey === "occupants") {
         console.log(dataKey);
@@ -791,7 +816,7 @@ export class BuildingIndoor {
       Math.min(
         1,
         ((point.lon - lineStart.lon) * dx + (point.lat - lineStart.lat) * dy) /
-        (dx * dx + dy * dy)
+          (dx * dx + dy * dy)
       )
     );
 
@@ -935,7 +960,7 @@ export class BuildingIndoor {
     if (!this.levelBarEl) return;
     const levelsRaw =
       this.buildingData.levels &&
-        Array.isArray(this.buildingData.levels.features)
+      Array.isArray(this.buildingData.levels.features)
         ? this.buildingData.levels.features
         : [];
     const levels = levelsRaw
@@ -1020,7 +1045,7 @@ export class BuildingIndoor {
         ds.entities.values.forEach((entity) => {
           const featureType = this.getEntityFeatureType(entity);
 
-          if (featureType === "wall" || featureType === "door") {
+          if (["wall", "door", "window-wall"].includes(featureType)) {
             // Wall and door visibility: hidden in 2D mode OR when user toggles off
             entity.show = !is2DMode && wallsVisible;
           } else {
@@ -1037,7 +1062,7 @@ export class BuildingIndoor {
     // Get all levels, sorted by zValue descending (for UI), but for filtering, use zValue
     const levelsRaw =
       this.buildingData.levels &&
-        Array.isArray(this.buildingData.levels.features)
+      Array.isArray(this.buildingData.levels.features)
         ? this.buildingData.levels.features
         : [];
     const levels = levelsRaw
@@ -1095,7 +1120,7 @@ export class BuildingIndoor {
     if (this.highlightEntity) {
       const parentEntityId =
         this.highlightEntity.properties &&
-          this.highlightEntity.properties.parent_entity
+        this.highlightEntity.properties.parent_entity
           ? this.highlightEntity.properties.parent_entity.getValue
             ? this.highlightEntity.properties.parent_entity.getValue()
             : this.highlightEntity.properties.parent_entity
@@ -1148,7 +1173,7 @@ export class BuildingIndoor {
         // Reset polygon material to original style
         const featureType =
           this.selectedEntity.properties &&
-            this.selectedEntity.properties.feature_type
+          this.selectedEntity.properties.feature_type
             ? this.selectedEntity.properties.feature_type.getValue
               ? this.selectedEntity.properties.feature_type.getValue()
               : this.selectedEntity.properties.feature_type
@@ -1157,7 +1182,7 @@ export class BuildingIndoor {
         if (featureType === "unit") {
           const category =
             this.selectedEntity.properties &&
-              this.selectedEntity.properties.category
+            this.selectedEntity.properties.category
               ? this.selectedEntity.properties.category.getValue
                 ? this.selectedEntity.properties.category.getValue()
                 : this.selectedEntity.properties.category
@@ -1176,7 +1201,7 @@ export class BuildingIndoor {
           // Restore original door material
           const category =
             this.selectedEntity.properties &&
-              this.selectedEntity.properties.category
+            this.selectedEntity.properties.category
               ? this.selectedEntity.properties.category.getValue
                 ? this.selectedEntity.properties.category.getValue()
                 : this.selectedEntity.properties.category
@@ -1319,7 +1344,7 @@ export class BuildingIndoor {
     if (this.highlightEntity) {
       const parentEntityId =
         this.highlightEntity.properties &&
-          this.highlightEntity.properties.parent_entity
+        this.highlightEntity.properties.parent_entity
           ? this.highlightEntity.properties.parent_entity.getValue
             ? this.highlightEntity.properties.parent_entity.getValue()
             : this.highlightEntity.properties.parent_entity
@@ -1530,11 +1555,12 @@ export class BuildingIndoor {
         const doorHeight = 2.0;
 
         // Create door entity from opening polyline
-        const doorEntity = this.createDoorFromPolyline(
+        const doorEntity = this.createWallFromPolyline(
           opening.geometry.coordinates,
           currentZ,
           doorHeight,
           opening.id,
+          "door",
           opening.properties.category || "default",
           opening.properties
         );
@@ -1554,17 +1580,82 @@ export class BuildingIndoor {
     return doorEntities;
   }
 
+  /**
+   * Generate 3D window-walls for all windows in the building
+   * Window-walls are 1m high walls that represent window frames
+   * @returns {Array} Array of window-wall entities
+   */
+  generateWindowWalls() {
+    if (!this.buildingData.levels || !this.buildingData.windows) {
+      console.warn(
+        "Cannot generate window-walls: missing levels or windows data"
+      );
+      return [];
+    }
+
+    // Create level height mapping
+    const levelMap = new Map();
+    this.buildingData.levels.features.forEach((level) => {
+      levelMap.set(level.id, level.properties.zValue);
+    });
+
+    console.log(
+      `Generating window-walls for ${this.buildingData.windows.features.length} windows across ${this.buildingData.levels.features.length} levels`
+    );
+
+    const windowWallEntities = [];
+    const windowWallHeight = 1.0; // 1 meter high window-walls
+
+    this.buildingData.windows.features.forEach((window, index) => {
+      try {
+        const currentZ = levelMap.get(window.properties.level_id);
+        if (currentZ === undefined) {
+          console.warn(
+            `Window ${window.id} has invalid level_id: ${window.properties.level_id}`
+          );
+          return;
+        }
+
+        // Create window-wall entity using generic helper
+        const windowWallEntity = this.createWallFromPolyline(
+          window.geometry.coordinates,
+          currentZ,
+          windowWallHeight,
+          window.properties.WindowID,
+          "window-wall", // Feature type
+          "default",
+          window.properties
+        );
+
+        if (windowWallEntity) {
+          windowWallEntities.push(windowWallEntity);
+        }
+      } catch (error) {
+        console.error(
+          `Error generating window-wall for window ${window.id}:`,
+          error
+        );
+      }
+    });
+
+    console.log(
+      `Successfully generated ${windowWallEntities.length} window-wall entities`
+    );
+    return windowWallEntities;
+  }
+
   // Create a 3D door entity from a polyline's coordinates
-  createDoorFromPolyline(
+  createWallFromPolyline(
     coordinates,
     baseHeight,
-    doorHeight,
-    openingId,
+    wallHeight,
+    featureId,
+    featureType,
     category,
     properties = {}
   ) {
     if (!coordinates || coordinates.length < 2) {
-      console.warn(`Invalid coordinates for opening ${openingId}`);
+      console.warn(`Invalid coordinates for ${featureType} ${featureId}`);
       return null;
     }
 
@@ -1578,72 +1669,100 @@ export class BuildingIndoor {
       });
 
       if (points.length < 2) {
-        console.warn(`Insufficient coordinates for door ${openingId}`);
+        console.warn(
+          `Insufficient coordinates for ${featureType} ${featureId}`
+        );
         return null;
       }
 
       // Create door as a thin rectangular polygon from the polyline
       // Use the polyline to create a thin rectangle representing the door
-      const doorWidth = 0.1; // 10cm thick door
-      const doorPolygon = this.createPolygonStripFromPolyline(points, doorWidth);
+      const wallWidth = 0.1; // 10cm thick door
+      const wallPolygon = this.createPolygonStripFromPolyline(
+        points,
+        wallWidth
+      );
 
-      if (!doorPolygon || doorPolygon.length < 3) {
-        console.warn(`Failed to create polygon strip for door ${openingId}`);
+      if (!wallPolygon || wallPolygon.length < 3) {
+        console.warn(
+          `Failed to create polygon strip for ${featureType} ${featureId}`
+        );
         return null;
       }
 
       // Convert to flat array for Cesium
-      const doorPositions = [];
-      doorPolygon.forEach((coord) => {
-        doorPositions.push(coord.lon, coord.lat);
+      const wallPositions = [];
+      wallPolygon.forEach((coord) => {
+        wallPositions.push(coord.lon, coord.lat);
       });
       // Create Cesium positions from coordinates
-      const cesiumPositions = Cesium.Cartesian3.fromDegreesArray(doorPositions);
+      const cesiumPositions = Cesium.Cartesian3.fromDegreesArray(wallPositions);
 
-      // Get door style based on category
-      const doorStyle = this.styles.door[category] || this.styles.door.default;
+      // Get style based on feature type and category
+      let style;
+      if (featureType === "door") {
+        style = this.styles.door[category] || this.styles.door.default;
+      } else if (featureType === "window-wall") {
+        style = this.styles.window.default;
+      } else {
+        // Fallback to door style
+        style = this.styles.door.default;
+      }
 
       const newProperties = { ...properties };
       delete newProperties.feature_type;
-      // Create door entity
-      const doorEntity = new Cesium.Entity({
-        id: `door_${openingId}`,
-        name: `Door for ${properties.nameEn || openingId}`,
+
+      // Create wall entity
+      const wallEntity = new Cesium.Entity({
+        id: `${featureType}_${featureId}`,
+        name: `${featureType} for ${properties.nameEn || featureId}`,
         polygon: {
           hierarchy: cesiumPositions,
-          material: doorStyle.material,
-          outline: doorStyle.outline,
-          outlineColor: doorStyle.outlineColor,
+          material: style.material,
+          outline: style.outline,
+          outlineColor: style.outlineColor,
           height: baseHeight,
-          extrudedHeight: baseHeight + doorHeight,
+          extrudedHeight: baseHeight + wallHeight,
           closeTop: false,
           closeBottom: true,
         },
 
-        // Make door clickable (unlike walls)
-        properties: {
-          feature_type: "door",
-          opening_id: openingId,
-          level_id: properties.level_id,
-          zValue: baseHeight,
-          doorHeight: doorHeight,
-          category: category,
-          venue_id: properties.venue_id,
-          // Inherit all original opening properties
-          ...newProperties,
-        },
+        // Make clickable (unlike unit walls)
+        properties:
+          featureType === "door"
+            ? {
+                feature_type: featureType,
+                parent_id: featureId,
+                level_id: properties.level_id,
+                zValue: baseHeight,
+                wallHeight: wallHeight,
+                category: category,
+                venue_id: properties.venue_id,
+                // Inherit all original properties
+                ...newProperties,
+              }
+            : {
+                feature_type: featureType,
+                parent_id: featureId,
+                // level_id: properties.level_id,
+                zValue: baseHeight,
+                wallHeight: wallHeight,
+                category: "default",
+                venue_id: properties.venue_id,
+                // Inherit all original properties
+                ...newProperties,
+              },
       });
 
-      return doorEntity;
+      return wallEntity;
     } catch (error) {
       console.error(
-        `Error creating door entity for opening ${openingId}:`,
+        `Error creating door entity for ${featureType} ${featureId}:`,
         error
       );
       return null;
     }
   }
-
 
   /**
    * Create a polygon strip from a polyline with specified width
@@ -1678,8 +1797,8 @@ export class BuildingIndoor {
         const length = Math.sqrt(dx * dx + dy * dy);
 
         if (length > 0) {
-          perpX = (-dy / length) * widthDegrees / 2;
-          perpY = (dx / length) * widthDegrees / 2;
+          perpX = ((-dy / length) * widthDegrees) / 2;
+          perpY = ((dx / length) * widthDegrees) / 2;
         } else {
           perpX = 0;
           perpY = 0;
@@ -1692,8 +1811,8 @@ export class BuildingIndoor {
         const length = Math.sqrt(dx * dx + dy * dy);
 
         if (length > 0) {
-          perpX = (-dy / length) * widthDegrees / 2;
-          perpY = (dx / length) * widthDegrees / 2;
+          perpX = ((-dy / length) * widthDegrees) / 2;
+          perpY = ((dx / length) * widthDegrees) / 2;
         } else {
           perpX = 0;
           perpY = 0;
@@ -1714,16 +1833,19 @@ export class BuildingIndoor {
         const len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
 
         // Calculate perpendiculars
-        let perp1X = 0, perp1Y = 0, perp2X = 0, perp2Y = 0;
+        let perp1X = 0,
+          perp1Y = 0,
+          perp2X = 0,
+          perp2Y = 0;
 
         if (len1 > 0) {
-          perp1X = (-dy1 / len1) * widthDegrees / 2;
-          perp1Y = (dx1 / len1) * widthDegrees / 2;
+          perp1X = ((-dy1 / len1) * widthDegrees) / 2;
+          perp1Y = ((dx1 / len1) * widthDegrees) / 2;
         }
 
         if (len2 > 0) {
-          perp2X = (-dy2 / len2) * widthDegrees / 2;
-          perp2Y = (dx2 / len2) * widthDegrees / 2;
+          perp2X = ((-dy2 / len2) * widthDegrees) / 2;
+          perp2Y = ((dx2 / len2) * widthDegrees) / 2;
         }
 
         // Average the perpendiculars for smooth corners

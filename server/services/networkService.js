@@ -212,7 +212,9 @@ export class NetworkService {
    * Process features in batches with progress tracking
    */
   async processFeaturesInBatches(networkData, batchSize, progressCallback) {
-    const features = networkData.features.filter((f) => f.properties.Restricted === "N");
+    const features = networkData.features.filter(
+      (f) => f.properties.Restricted === "N"
+    );
     const totalBatches = Math.ceil(features.length / batchSize);
     let processedFeatures = 0;
     let insertedRecords = 0;
@@ -228,7 +230,8 @@ export class NetworkService {
       const batchFeatures = features.slice(startIdx, endIdx);
 
       console.log(
-        `⚡ Processing batch ${batchIndex + 1}/${totalBatches} (${batchFeatures.length
+        `⚡ Processing batch ${batchIndex + 1}/${totalBatches} (${
+          batchFeatures.length
         } features)`
       );
 
@@ -246,7 +249,8 @@ export class NetworkService {
         );
 
         console.log(
-          `✅ Batch ${batchIndex + 1} completed: ${batchResult.insertedCount
+          `✅ Batch ${batchIndex + 1} completed: ${
+            batchResult.insertedCount
           } inserted (${progressPercent}%)`
         );
 
