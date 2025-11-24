@@ -1424,7 +1424,7 @@ export class BuildingIndoor {
         // }
 
         ///default 2.8m
-        wallHeight = 2.4;
+        wallHeight = 2.2;
         // Create wall entity from unit polygon
         const wallEntity = this.createWallFromPolygon(
           unit.geometry.coordinates[0],

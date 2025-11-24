@@ -533,7 +533,7 @@ export const indoorStyles = {
   "window-wall": {
     default: {
       material: new Cesium.ColorMaterialProperty(
-        new Cesium.Color(0.7, 0.3, 0.8, 0.5)
+        new Cesium.Color(0.137, 0.909, 0.98, 0.3)
       ), // Purple with some transparency
       outline: true,
       outlineColor: new Cesium.Color(0.4, 0.2, 0.1, 0.8), // Darker brown outline

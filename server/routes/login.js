@@ -46,14 +46,14 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" }
+      { expiresIn: "1h" }
     );
     // Set HTTP-only cookie
     res.cookie("token", token, {
       httpOnly: true,
       //   secure: process.env.NODE_ENV === "production", ///add this after we have SSL certificate
       sameSite: "lax",
-      maxAge: 60 * 60 * 1000, // 1hour
+      // maxAge: 60 * 60 * 1000, // 1hour
     });
     res.json({ message: "Login successful" });
   } catch (err) {

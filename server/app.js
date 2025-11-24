@@ -26,10 +26,14 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
 app.get("/", (req, res) => {
+  // Add headers to prevent caching
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
   res.sendFile(path.resolve("public/indoor-viewer.html"));
 });
 
 app.get("/indoor-viewer.html", (req, res) => {
+  // Add headers to prevent caching
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
   res.sendFile(path.resolve("public/indoor-viewer.html"));
 });
 
@@ -41,7 +45,17 @@ app.use(express.static(path.resolve("public")));
 app.use("/3dtiles", express.static(path.resolve("3dtiles")));
 
 // // Before mounting routes
-const csrfProtection = csurf({ cookie: true });
+// const csrfProtection = csurf({ cookie: true });
+
+// Before mounting routes
+const csrfProtection = csurf({
+  cookie: {
+    httpOnly: true,
+    // secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    // No maxAge property means it's a session cookie
+  },
+});
 
 app.use((req, res, next) => {
   // Skip CSRF(Cross-Site Request Forgery) for initial admin creation and external-protected and CSRF will not check get requests
