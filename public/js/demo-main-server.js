@@ -847,10 +847,19 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
         venueEntity = venueDataSources[0].entities.getById(venueId);
         if (venueEntity) {
           // Fly to the venue location first with custom duration
+          // Small delay to ensure 3D mode is fully activated
+          await new Promise(resolve => setTimeout(resolve, 300));
+
+          console.log(`[Demo] Flying to building ${venueId} in 3D mode`);
+
+          // Fly to the venue location first with custom duration
           await viewer.flyTo(venueEntity, {
             duration: 2.0,
             offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
           });
+
+          console.log(`[Demo] Fly complete, hiding venue entity`);
+
           // Then hide the venue entity
           venueEntity.show = false;
         }

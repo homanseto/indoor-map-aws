@@ -288,6 +288,31 @@ export class BuildingIndoor {
     if (mode === "2D") {
       appState.setKickMode(false);
       kickMode = false;
+      const current = appState.getSelectedLevel();
+      if (current === "ALL") {
+        const levels = this.buildingData.levels.features.slice();
+        const highest = levels.sort(
+          (a, b) => b.properties.zValue - a.properties.zValue
+        )[0];
+
+        if (highest) {
+          console.log(
+            `[BuildingIndoor] 2D mode: Auto-selecting highest level ${highest.id}`
+          );
+          appState.setSelectedLevel(highest.id);
+
+          // Update level bar UI to highlight the selected level
+          if (this.levelBarEl) {
+            Array.from(this.levelBarEl.children).forEach((btn) => {
+              btn.classList.toggle(
+                "active",
+                btn.dataset.levelId === String(highest.id)
+              );
+            });
+          }
+        }
+      }
+      // If user already selected a specific level, keep it (no change needed)
     }
 
     // Update kick toggle UI when kickMode changes
@@ -502,7 +527,7 @@ export class BuildingIndoor {
 
       // ✅ NEW: Use Cesium Label instead of canvas billboard
       // Determine font size based on polygon size (REDUCED for less overlap)
-      const fontSize = isVerySmallPolygon ? 10 : 12;  // Was 12/14 - too big!
+      const fontSize = isVerySmallPolygon ? 10 : 12; // Was 12/14 - too big!
 
       // ✅ SMART: Progressive visibility based on actual unit size
       // Larger units visible from farther away, small units only when zoomed in
@@ -552,10 +577,10 @@ export class BuildingIndoor {
           pixelOffset: new Cesium.Cartesian2(0, 0),
           // ✅ ADJUSTED: Much smaller when far to reduce overlap
           scaleByDistance: new Cesium.NearFarScalar(
-            50,   // Near distance: 50m
-            1.5,  // Near scale: 1.5x when zoomed in (was 1.8x)
-            400,  // Far distance: 400m
-            0.3   // Far scale: 0.3x when zoomed out (was 0.6x - too big!)
+            50, // Near distance: 50m
+            1.5, // Near scale: 1.5x when zoomed in (was 1.8x)
+            400, // Far distance: 400m
+            0.3 // Far scale: 0.3x when zoomed out (was 0.6x - too big!)
           ),
           // Distance-based visibility
           distanceDisplayCondition: new Cesium.DistanceDisplayCondition(
@@ -574,19 +599,29 @@ export class BuildingIndoor {
       this.removeUnitLabels();
     } else {
       // ✅ NEW: Show distribution of units by visibility distance
-      const veryTiny = ds.entities.values.filter(e => e._unitArea < 0.000000001).length;
-      const small = ds.entities.values.filter(e => e._unitArea >= 0.000000001 && e._unitArea < 0.00000001).length;
-      const medium = ds.entities.values.filter(e => e._unitArea >= 0.00000001 && e._unitArea < 0.0000001).length;
-      const large = ds.entities.values.filter(e => e._unitArea >= 0.0000001 && e._unitArea < 0.00001).length;
-      const veryLarge = ds.entities.values.filter(e => e._unitArea >= 0.00001).length;
+      const veryTiny = ds.entities.values.filter(
+        (e) => e._unitArea < 0.000000001
+      ).length;
+      const small = ds.entities.values.filter(
+        (e) => e._unitArea >= 0.000000001 && e._unitArea < 0.00000001
+      ).length;
+      const medium = ds.entities.values.filter(
+        (e) => e._unitArea >= 0.00000001 && e._unitArea < 0.0000001
+      ).length;
+      const large = ds.entities.values.filter(
+        (e) => e._unitArea >= 0.0000001 && e._unitArea < 0.00001
+      ).length;
+      const veryLarge = ds.entities.values.filter(
+        (e) => e._unitArea >= 0.00001
+      ).length;
 
       console.log(
         `[BuildingIndoor] Added ${ds.entities.values.length} unit labels with progressive visibility:\n` +
-        `  - Very Tiny (0-60m): ${veryTiny} units\n` +
-        `  - Small (0-120m): ${small} units\n` +
-        `  - Medium (0-200m): ${medium} units\n` +
-        `  - Large (0-300m): ${large} units\n` +
-        `  - Very Large (0-400m): ${veryLarge} units`
+          `  - Very Tiny (0-60m): ${veryTiny} units\n` +
+          `  - Small (0-120m): ${small} units\n` +
+          `  - Medium (0-200m): ${medium} units\n` +
+          `  - Large (0-300m): ${large} units\n` +
+          `  - Very Large (0-400m): ${veryLarge} units`
       );
 
       if (this.twoDLayeringManager && this.twoDLayeringManager.isInitialized) {
@@ -827,7 +862,7 @@ export class BuildingIndoor {
       Math.min(
         1,
         ((point.lon - lineStart.lon) * dx + (point.lat - lineStart.lat) * dy) /
-        (dx * dx + dy * dy)
+          (dx * dx + dy * dy)
       )
     );
 
@@ -857,16 +892,17 @@ export class BuildingIndoor {
 
   // Create text canvas with transparent background
   // Create text canvas with transparent background and multi-line support
-  createTextCanvas(text, maxWidth = 120, maxHeight = 50) {  // ✅ Increased maxHeight from 24 to 50
+  createTextCanvas(text, maxWidth = 120, maxHeight = 50) {
+    // ✅ Increased maxHeight from 24 to 50
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
 
     // ✅ INCREASED base font size from 14px to 18px
-    let fontSize = 15;  // Was 14
+    let fontSize = 15; // Was 14
     context.font = `bold ${fontSize}px Arial, sans-serif`;
 
     // ✅ SIMPLIFIED: Split long text into multiple lines
-    const words = text.split(' ');
+    const words = text.split(" ");
     let lines = [];
 
     // Only split if text is very long (more than 20 characters)
@@ -874,8 +910,8 @@ export class BuildingIndoor {
       // Split into 2 lines at the middle word
       const midPoint = Math.ceil(words.length / 2);
       lines = [
-        words.slice(0, midPoint).join(' '),
-        words.slice(midPoint).join(' ')
+        words.slice(0, midPoint).join(" "),
+        words.slice(midPoint).join(" "),
       ];
     } else {
       // Keep as single line
@@ -884,7 +920,7 @@ export class BuildingIndoor {
 
     // Measure text and adjust font size if needed
     let maxTextWidth = 0;
-    lines.forEach(line => {
+    lines.forEach((line) => {
       const metrics = context.measureText(line);
       maxTextWidth = Math.max(maxTextWidth, metrics.width);
     });
@@ -894,15 +930,15 @@ export class BuildingIndoor {
       fontSize--;
       context.font = `bold ${fontSize}px Arial, sans-serif`;
       maxTextWidth = 0;
-      lines.forEach(line => {
+      lines.forEach((line) => {
         const metrics = context.measureText(line);
         maxTextWidth = Math.max(maxTextWidth, metrics.width);
       });
     }
 
     // Set canvas size based on text dimensions
-    const padding = 8;  // Increased padding
-    const lineHeight = fontSize * 1.3;  // Line spacing
+    const padding = 8; // Increased padding
+    const lineHeight = fontSize * 1.3; // Line spacing
     canvas.width = Math.min(maxTextWidth + padding * 2, maxWidth);
     canvas.height = Math.min(lineHeight * lines.length + padding, maxHeight);
 
@@ -918,11 +954,14 @@ export class BuildingIndoor {
 
     // ✅ Draw each line of text
     lines.forEach((line, index) => {
-      const centerY = (canvas.height / 2) - ((lines.length - 1) * lineHeight / 2) + (index * lineHeight);
+      const centerY =
+        canvas.height / 2 -
+        ((lines.length - 1) * lineHeight) / 2 +
+        index * lineHeight;
 
       // Draw text outline for better contrast
       context.strokeStyle = "rgba(0, 0, 0, 0.9)";
-      context.lineWidth = 2.5;  // Thicker outline
+      context.lineWidth = 2.5; // Thicker outline
       context.strokeText(line, centerX, centerY);
 
       // Draw main text
@@ -996,7 +1035,7 @@ export class BuildingIndoor {
     if (!this.levelBarEl) return;
     const levelsRaw =
       this.buildingData.levels &&
-        Array.isArray(this.buildingData.levels.features)
+      Array.isArray(this.buildingData.levels.features)
         ? this.buildingData.levels.features
         : [];
     const levels = levelsRaw
@@ -1098,7 +1137,7 @@ export class BuildingIndoor {
     // Get all levels, sorted by zValue descending (for UI), but for filtering, use zValue
     const levelsRaw =
       this.buildingData.levels &&
-        Array.isArray(this.buildingData.levels.features)
+      Array.isArray(this.buildingData.levels.features)
         ? this.buildingData.levels.features
         : [];
     const levels = levelsRaw
@@ -1156,7 +1195,7 @@ export class BuildingIndoor {
     if (this.highlightEntity) {
       const parentEntityId =
         this.highlightEntity.properties &&
-          this.highlightEntity.properties.parent_entity
+        this.highlightEntity.properties.parent_entity
           ? this.highlightEntity.properties.parent_entity.getValue
             ? this.highlightEntity.properties.parent_entity.getValue()
             : this.highlightEntity.properties.parent_entity
@@ -1209,7 +1248,7 @@ export class BuildingIndoor {
         // Reset polygon material to original style
         const featureType =
           this.selectedEntity.properties &&
-            this.selectedEntity.properties.feature_type
+          this.selectedEntity.properties.feature_type
             ? this.selectedEntity.properties.feature_type.getValue
               ? this.selectedEntity.properties.feature_type.getValue()
               : this.selectedEntity.properties.feature_type
@@ -1218,7 +1257,7 @@ export class BuildingIndoor {
         if (featureType === "unit") {
           const category =
             this.selectedEntity.properties &&
-              this.selectedEntity.properties.category
+            this.selectedEntity.properties.category
               ? this.selectedEntity.properties.category.getValue
                 ? this.selectedEntity.properties.category.getValue()
                 : this.selectedEntity.properties.category
@@ -1237,7 +1276,7 @@ export class BuildingIndoor {
           // Restore original door material
           const category =
             this.selectedEntity.properties &&
-              this.selectedEntity.properties.category
+            this.selectedEntity.properties.category
               ? this.selectedEntity.properties.category.getValue
                 ? this.selectedEntity.properties.category.getValue()
                 : this.selectedEntity.properties.category
@@ -1380,7 +1419,7 @@ export class BuildingIndoor {
     if (this.highlightEntity) {
       const parentEntityId =
         this.highlightEntity.properties &&
-          this.highlightEntity.properties.parent_entity
+        this.highlightEntity.properties.parent_entity
           ? this.highlightEntity.properties.parent_entity.getValue
             ? this.highlightEntity.properties.parent_entity.getValue()
             : this.highlightEntity.properties.parent_entity
@@ -1767,27 +1806,27 @@ export class BuildingIndoor {
         properties:
           featureType === "door"
             ? {
-              feature_type: featureType,
-              parent_id: featureId,
-              level_id: properties.level_id,
-              zValue: baseHeight,
-              wallHeight: wallHeight,
-              category: category,
-              venue_id: properties.venue_id,
-              // Inherit all original properties
-              ...newProperties,
-            }
+                feature_type: featureType,
+                parent_id: featureId,
+                level_id: properties.level_id,
+                zValue: baseHeight,
+                wallHeight: wallHeight,
+                category: category,
+                venue_id: properties.venue_id,
+                // Inherit all original properties
+                ...newProperties,
+              }
             : {
-              feature_type: featureType,
-              parent_id: featureId,
-              // level_id: properties.level_id,
-              zValue: baseHeight,
-              wallHeight: wallHeight,
-              category: "default",
-              venue_id: properties.venue_id,
-              // Inherit all original properties
-              ...newProperties,
-            },
+                feature_type: featureType,
+                parent_id: featureId,
+                // level_id: properties.level_id,
+                zValue: baseHeight,
+                wallHeight: wallHeight,
+                category: "default",
+                venue_id: properties.venue_id,
+                // Inherit all original properties
+                ...newProperties,
+              },
       });
 
       return wallEntity;

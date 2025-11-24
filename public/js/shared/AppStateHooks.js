@@ -455,6 +455,12 @@ export class StateActions {
     // Switch from previous building if needed
     const lastActive = appState.getLastActiveVenueId();
     if (lastActive && lastActive !== venueId) {
+      console.log(`[StateActions] Building changed from ${lastActive} to ${venueId}`);
+      console.log(`[StateActions] Resetting to 3D mode and ALL levels`);
+
+      appState.setViewMode("3D");
+      appState.setSelectedLevel("ALL");
+
       StateActions.deactivateBuilding(lastActive);
     }
 
@@ -833,7 +839,7 @@ export class HookDev {
     const testHooks = [
       {
         name: "Building Hook",
-        factory: () => StateHooks.useBuildingState(() => {}),
+        factory: () => StateHooks.useBuildingState(() => { }),
         expectedEvents: [
           "buildingAdded",
           "buildingRemoved",
@@ -843,7 +849,7 @@ export class HookDev {
       },
       {
         name: "UI Hook",
-        factory: () => StateHooks.useUIState(() => {}),
+        factory: () => StateHooks.useUIState(() => { }),
         expectedEvents: [
           "viewModeChanged",
           "kickModeChanged",
@@ -855,7 +861,7 @@ export class HookDev {
       },
       {
         name: "Network Hook",
-        factory: () => StateHooks.useNetworkState(() => {}),
+        factory: () => StateHooks.useNetworkState(() => { }),
         expectedEvents: [
           "networkAdded",
           "networkRemoved",
@@ -866,7 +872,7 @@ export class HookDev {
       },
       {
         name: "Viewer Hook",
-        factory: () => StateHooks.useViewerState(() => {}),
+        factory: () => StateHooks.useViewerState(() => { }),
         expectedEvents: ["viewerChanged", "sidebarChanged"],
       },
       {
@@ -877,7 +883,7 @@ export class HookDev {
               mode: state.getViewMode(),
               kick: state.getKickMode(),
             }),
-            () => {}
+            () => { }
           ),
         expectedEvents: ["viewModeChanged", "kickModeChanged"],
       },
@@ -895,16 +901,15 @@ export class HookDev {
       const efficiency =
         expectedEvents.length > 0
           ? (expectedEvents.filter((e) => actualEvents.includes(e)).length /
-              expectedEvents.length) *
-            100
+            expectedEvents.length) *
+          100
           : 100;
 
       console.log(`  Coverage: ${efficiency.toFixed(1)}%`);
       console.log(
-        `  Efficiency: ${
-          actualEvents.length <= expectedEvents.length + 2
-            ? "✅ Good"
-            : "⚠️ Could improve"
+        `  Efficiency: ${actualEvents.length <= expectedEvents.length + 2
+          ? "✅ Good"
+          : "⚠️ Could improve"
         }`
       );
 
@@ -932,7 +937,7 @@ export class HookDev {
 
     // Create many hooks rapidly
     for (let i = 0; i < iterations; i++) {
-      const cleanup = StateHooks.useUIState(() => {}, { debugMode: false });
+      const cleanup = StateHooks.useUIState(() => { }, { debugMode: false });
       hooks.push(cleanup);
     }
 
@@ -963,8 +968,7 @@ export class HookDev {
     console.log(`   State changes processed in: ${changeTime.toFixed(2)}ms`);
     console.log(`   Cleanup time: ${cleanupTime.toFixed(2)}ms`);
     console.log(
-      `   Overall efficiency: ${
-        iterations < 1000 ? "✅ Excellent" : "⚠️ Consider optimization"
+      `   Overall efficiency: ${iterations < 1000 ? "✅ Excellent" : "⚠️ Consider optimization"
       }`
     );
   }
