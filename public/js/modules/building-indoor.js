@@ -504,16 +504,30 @@ export class BuildingIndoor {
       // Determine font size based on polygon size (REDUCED for less overlap)
       const fontSize = isVerySmallPolygon ? 10 : 12;  // Was 12/14 - too big!
 
-      // Create distance display condition based on polygon size
+      // ✅ SMART: Progressive visibility based on actual unit size
+      // Larger units visible from farther away, small units only when zoomed in
       let minDistance, maxDistance;
-      if (isVerySmallPolygon) {
-        // Small polygons: only show when zoomed in close
+
+      if (polygonArea < 0.000000001) {
+        // Very tiny units (closets, small storage): only visible very close
         minDistance = 0;
-        maxDistance = 100;
+        maxDistance = 60;
+      } else if (polygonArea < 0.00000001) {
+        // Small units (bathrooms, small offices, corridors): visible at close-medium range
+        minDistance = 0;
+        maxDistance = 120;
+      } else if (polygonArea < 0.0000001) {
+        // Medium units (classrooms, meeting rooms): visible at medium range
+        minDistance = 0;
+        maxDistance = 200;
+      } else if (polygonArea < 0.00001) {
+        // Large units (auditoriums, large offices): visible from far
+        minDistance = 0;
+        maxDistance = 300;
       } else {
-        // Normal polygons: show at moderate zoom levels
+        // Very large units (lobbies, sports courts, halls): visible from very far
         minDistance = 0;
-        maxDistance = 500;
+        maxDistance = 400;
       }
 
       ds.entities.add({
@@ -559,11 +573,20 @@ export class BuildingIndoor {
     if (ds.entities.values.length === 0) {
       this.removeUnitLabels();
     } else {
-      const smallUnits = ds.entities.values.filter(
-        (e) => e._isSmallUnit
-      ).length;
+      // ✅ NEW: Show distribution of units by visibility distance
+      const veryTiny = ds.entities.values.filter(e => e._unitArea < 0.000000001).length;
+      const small = ds.entities.values.filter(e => e._unitArea >= 0.000000001 && e._unitArea < 0.00000001).length;
+      const medium = ds.entities.values.filter(e => e._unitArea >= 0.00000001 && e._unitArea < 0.0000001).length;
+      const large = ds.entities.values.filter(e => e._unitArea >= 0.0000001 && e._unitArea < 0.00001).length;
+      const veryLarge = ds.entities.values.filter(e => e._unitArea >= 0.00001).length;
+
       console.log(
-        `[BuildingIndoor] Added ${ds.entities.values.length} unit labels (${smallUnits} small units) with interior positioning and donut-hole avoidance`
+        `[BuildingIndoor] Added ${ds.entities.values.length} unit labels with progressive visibility:\n` +
+        `  - Very Tiny (0-60m): ${veryTiny} units\n` +
+        `  - Small (0-120m): ${small} units\n` +
+        `  - Medium (0-200m): ${medium} units\n` +
+        `  - Large (0-300m): ${large} units\n` +
+        `  - Very Large (0-400m): ${veryLarge} units`
       );
 
       if (this.twoDLayeringManager && this.twoDLayeringManager.isInitialized) {
