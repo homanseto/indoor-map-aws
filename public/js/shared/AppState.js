@@ -74,7 +74,7 @@ class AppStateManager {
         defaultVisible: true,
         style: {
           show: true,
-          color: "color('orange')",
+          color: "color('rgb(3, 244, 15)')",
         },
       },
       // indoorMTRTiles: {

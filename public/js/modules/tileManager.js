@@ -180,7 +180,9 @@ export class TilesManager {
     tileset.show = state.visible;
 
     // Apply opacity
-    this.updateTilesetOpacity(tilesetId, tileset, state.opacity);
+    if (tilesetId === "threeDTiles") {
+      this.updateTilesetOpacity(tilesetId, tileset, state.opacity);
+    }
 
     console.log(`[TilesManager] Applied state to ${tilesetId}:`, state);
   }
@@ -220,16 +222,29 @@ export class TilesManager {
    * @param {number} opacity
    */
   updateTilesetOpacity(tilesetId, tileset, opacity) {
-    tileset.style = new Cesium.Cesium3DTileStyle({
-      color: {
-        evaluateColor: function (feature, result) {
-          return Cesium.Color.clone(
-            Cesium.Color.WHITE.withAlpha(opacity),
-            result
-          );
-        },
-      },
-    });
+    console.log(tilesetId);
+    tileset.style =
+      tilesetId === "threeDTiles"
+        ? new Cesium.Cesium3DTileStyle({
+            color: {
+              evaluateColor: function (feature, result) {
+                return Cesium.Color.clone(
+                  Cesium.Color.WHITE.withAlpha(opacity),
+                  result
+                );
+              },
+            },
+          })
+        : new Cesium.Cesium3DTileStyle({
+            color: {
+              evaluateColor: function (feature, result) {
+                return Cesium.Color.clone(
+                  new Cesium.Color(3 / 255, 244 / 255, 15 / 255, 1.0),
+                  result
+                );
+              },
+            },
+          });
   }
 
   /**

@@ -48,7 +48,7 @@ export class Sidebar {
     this.restoreSidebarState();
 
     // NEW: Set initial CSS variable for sidebar width
-    document.body.style.setProperty('--sidebar-width', `${this.width}px`);
+    document.body.style.setProperty("--sidebar-width", `${this.width}px`);
   }
 
   createSidebar() {
@@ -224,19 +224,23 @@ export class Sidebar {
   }
 
   /**
- * Update visibility for ALL loaded networks (global control)
- */
+   * Update visibility for ALL loaded networks (global control)
+   */
   updateAllNetworks() {
     // Get ALL loaded networks from AppState
     const allNetworks = appState.getAllActiveNetworks();
 
-    console.log(`[Sidebar] Updating visibility for ${allNetworks.size} networks`);
+    console.log(
+      `[Sidebar] Updating visibility for ${allNetworks.size} networks`
+    );
 
     // Update visibility for each network
     allNetworks.forEach((network, venueId) => {
       if (network && typeof network.updateNetworkVisibility === "function") {
         network.updateNetworkVisibility();
-        console.log(`[Sidebar] Updated network visibility for venue: ${venueId}`);
+        console.log(
+          `[Sidebar] Updated network visibility for venue: ${venueId}`
+        );
       }
     });
   }
@@ -298,8 +302,8 @@ export class Sidebar {
   }
 
   /**
- * Update network button state based on GLOBAL network visibility
- */
+   * Update network button state based on GLOBAL network visibility
+   */
   updateNetworkButtonState() {
     if (!this.networkToggleButton) return;
 
@@ -314,7 +318,10 @@ export class Sidebar {
     this.networkToggleButton.disabled = !hasAnyNetwork;
 
     // Update button appearance based on GLOBAL visibility
-    this.networkToggleButton.classList.remove("network-visible", "network-hidden");
+    this.networkToggleButton.classList.remove(
+      "network-visible",
+      "network-hidden"
+    );
     if (networkVisible && hasAnyNetwork) {
       this.networkToggleButton.classList.add("network-visible");
     } else if (hasAnyNetwork) {
@@ -322,7 +329,9 @@ export class Sidebar {
     }
 
     // Update button text
-    const buttonText = this.networkToggleButton.querySelector(".network-button-text");
+    const buttonText = this.networkToggleButton.querySelector(
+      ".network-button-text"
+    );
     if (!hasAnyNetwork) {
       buttonText.textContent = "No Networks";
       this.networkToggleButton.title = "Load a building with network data";
@@ -462,17 +471,15 @@ export class Sidebar {
       this.container.style.width = `${newWidth}px`;
 
       // NEW: Update CSS variable when resizing
-      document.body.style.setProperty('--sidebar-width', `${newWidth}px`);
-
+      document.body.style.setProperty("--sidebar-width", `${newWidth}px`);
 
       // Update toggle button position if sidebar is visible
       if (this.isVisible) {
         this.updateTogglePosition();
       }
 
-
-      // Save new width to persistence
-      this.saveSidebarState();
+      // // Save new width to persistence
+      // this.saveSidebarState();
     };
 
     const handleMouseUp = () => {
@@ -505,7 +512,7 @@ export class Sidebar {
 
     // NEW: Add class to body to trigger CSS rules
     document.body.classList.add('sidebar-open');
-    this.saveSidebarState();
+    // this.saveSidebarState();
   }
 
   hide() {
@@ -516,8 +523,8 @@ export class Sidebar {
     this.toggleButton.style.right = "20px"; // Reset to default position
 
     // NEW: Remove class from body
-    document.body.classList.remove('sidebar-open');
-    this.saveSidebarState();
+    document.body.classList.remove("sidebar-open");
+    // this.saveSidebarState();
   }
 
   updateTogglePosition() {
@@ -556,7 +563,6 @@ export class Sidebar {
       const result = originalShowInfo.apply(this.viewer.infoBox, args);
       return result;
     };
-
   }
 
   createLegend() {
@@ -1010,7 +1016,7 @@ export class Sidebar {
     // Listen for UI state changes (view mode, processing state)
     const uiStateCleanup = StateHooks.useUIState((uiState) => {
       this.onViewModeChanged(uiState.viewMode === "2D");
-      this.updateProcessingState(uiState.isProcessing);
+      // this.updateProcessingState(uiState.isProcessing);
     });
     this.stateCleanups.push(uiStateCleanup);
 
@@ -1084,13 +1090,10 @@ export class Sidebar {
     this.stateCleanups.push(networkVisibilityCleanup);
 
     // Subscribe to network added events (update button when new networks load)
-    const networkAddedCleanup = appState.subscribe(
-      "networkAdded",
-      (data) => {
-        console.log(`[Sidebar] Network added for venue: ${data.venueId}`);
-        this.updateNetworkButtonState();
-      }
-    );
+    const networkAddedCleanup = appState.subscribe("networkAdded", (data) => {
+      console.log(`[Sidebar] Network added for venue: ${data.venueId}`);
+      this.updateNetworkButtonState();
+    });
     this.stateCleanups.push(networkAddedCleanup);
 
     // Subscribe to network removed events (update button when networks unload)
@@ -1354,7 +1357,6 @@ export class Sidebar {
       this.toggleTooltip.parentNode.removeChild(this.toggleTooltip);
     }
 
-
     console.log("[Sidebar] Destroyed and cleaned up state listeners");
   }
 }
@@ -1378,4 +1380,3 @@ export function setupInfoBoxMonitoring(viewer) {
     window.mapSidebar.setupInfoBoxMonitoring();
   }
 }
-
