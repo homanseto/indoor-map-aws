@@ -1424,7 +1424,7 @@ export class BuildingIndoor {
         // }
 
         ///default 2.8m
-        wallHeight = 2.8;
+        wallHeight = 2.4;
         // Create wall entity from unit polygon
         const wallEntity = this.createWallFromPolygon(
           unit.geometry.coordinates[0],
@@ -1704,7 +1704,7 @@ export class BuildingIndoor {
       if (featureType === "door") {
         style = this.styles.door[category] || this.styles.door.default;
       } else if (featureType === "window-wall") {
-        style = this.styles.window.default;
+        style = this.styles["window-wall"].default;
       } else {
         // Fallback to door style
         style = this.styles.door.default;
