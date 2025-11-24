@@ -81,7 +81,7 @@ export class TwoDLayeringManager {
 
     let processedCount = 0;
     unitLabelDataSource.entities.values.forEach((entity) => {
-      if (entity.billboard && entity.position) {
+      if (entity.label && entity.position) {
         try {
           // Get current position
           const currentPos = entity.position.getValue
@@ -101,22 +101,18 @@ export class TwoDLayeringManager {
               this.heightLayers.unitLabels
             );
 
-            // Configure billboard for 2D visibility with distance-based scaling
-            entity.billboard.heightReference = Cesium.HeightReference.NONE;
-            entity.billboard.disableDepthTestDistance =
+            // Configure label for 2D visibility with distance-based scaling
+            entity.label.heightReference = Cesium.HeightReference.NONE;
+            entity.label.disableDepthTestDistance =
               Number.POSITIVE_INFINITY;
 
-            // Add distance-based scaling for readability
-            entity.billboard.scaleByDistance = new Cesium.NearFarScalar(
-              50,
-              1.5,
-              500,
-              0.5
+            // ✅ Apply consistent scaling for labels (matches building-indoor.js)
+            entity.label.scaleByDistance = new Cesium.NearFarScalar(
+              50,   // Near distance: 50m
+              1.5,  // Near scale: 1.5x when zoomed in
+              400,  // Far distance: 400m
+              0.3   // Far scale: 0.3x when zoomed out
             );
-
-            // Add distance-based visibility to prevent clutter
-            entity.billboard.distanceDisplayCondition =
-              new Cesium.DistanceDisplayCondition(0, 1000);
 
             processedCount++;
           }

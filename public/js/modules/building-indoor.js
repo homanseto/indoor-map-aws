@@ -374,8 +374,8 @@ export class BuildingIndoor {
   // NEW METHOD: Check if label fits within unit polygon
   isLabelWithinUnit(labelCanvas, interiorPoint, polygon, holes = []) {
     // Convert canvas dimensions to approximate geographic bounds
-    const labelWidthDegrees = labelCanvas.width * 0.000001; // Rough conversion
-    const labelHeightDegrees = labelCanvas.height * 0.000001;
+    const labelWidthDegrees = labelCanvas.width * 0.000001 * 0.5; // Rough conversion
+    const labelHeightDegrees = labelCanvas.height * 0.000001 * 0.5;
 
     // Create label bounding box corners
     const labelBounds = [
@@ -456,24 +456,16 @@ export class BuildingIndoor {
   }
 
   handleUnitLabelStateChange(labelState) {
-    console.log("[BuildingIndoor] Unit label state changed:", labelState);
-    console.log("=== UNIT LABEL DIAGNOSTIC START ===");
-    console.log("[BuildingIndoor] Unit label state changed:", labelState);
-    console.log("[BuildingIndoor] Building venueId:", this.venueId);
-
     const currentHeight = this.getCameraHeight();
-    console.log("[BuildingIndoor] Camera height:", currentHeight);
 
     const activeBuilding = appState.getActiveBuilding(labelState.venueId);
     if (activeBuilding !== this) {
-      console.log("[BuildingIndoor] ❌ Not active building, removing labels");
       this.removeUnitLabels();
       return;
     }
 
     // Only show labels in 2D mode and when active
     if (!labelState.active || !appState.isIn2DMode()) {
-      console.log("[BuildingIndoor] ❌ Labels not active or not in 2D mode");
       this.removeUnitLabels();
       return;
     }
@@ -482,42 +474,15 @@ export class BuildingIndoor {
     ds.entities.removeAll();
 
     const units = this.buildingData.units?.features ?? [];
-    console.log("[BuildingIndoor] Total units in building:", units.length);
-    // NEW DIAGNOSTIC: Check unit data structure
-    if (units.length > 0) {
-      console.log("[BuildingIndoor] Sample unit data:", {
-        id: units[0].id,
-        properties: units[0].properties,
-        geometry: units[0].geometry ? "exists" : "missing"
-      });
-    }
+
     // Filter units based on level selection
     let filteredUnits = units.filter((unit) => unit.properties.nameEn);
-    console.log("[BuildingIndoor] Units with nameEn:", filteredUnits.length);
-
-    // NEW DIAGNOSTIC: Check level filtering
-    console.log("[BuildingIndoor] Filtering by levelId:", labelState.levelId);
 
     if (labelState.levelId && labelState.levelId !== "ALL") {
-      const beforeFilter = filteredUnits.length;
       filteredUnits = filteredUnits.filter(
         (unit) => unit.properties.level_id === labelState.levelId
       );
-      console.log(`[BuildingIndoor] After level filter: ${filteredUnits.length} (was ${beforeFilter})`);
-
-      // NEW DIAGNOSTIC: Show what level_ids exist
-      const uniqueLevelIds = [...new Set(units.map(u => u.properties.level_id))];
-      console.log("[BuildingIndoor] Available level_ids in units:", uniqueLevelIds);
-      console.log("[BuildingIndoor] Looking for level_id:", labelState.levelId);
-
     }
-
-    // if (currentHeight > 11809450) {
-    //   console.log("[BuildingIndoor] ❌ Camera too high, not showing labels");
-    //   return;
-    // }
-    console.log("[BuildingIndoor] Processing", filteredUnits.length, "units for labels");
-    console.log("=== UNIT LABEL DIAGNOSTIC END ===");
 
     filteredUnits.forEach((unit) => {
       // Extract holes if polygon has them (for donut-shaped units)
@@ -535,32 +500,20 @@ export class BuildingIndoor {
       );
       if (!interiorPoint) return;
 
-      // Create adaptive-sized label
-      const maxLabelWidth = isVerySmallPolygon ? 80 : 120;
-      const maxLabelHeight = isVerySmallPolygon ? 16 : 24;
-      const labelCanvas = this.createTextCanvas(
-        unit.properties.nameEn,
-        maxLabelWidth,
-        maxLabelHeight
-      );
-
-      // ✅ KEY CHECK: Only show label if it fits completely within unit
-      // if (
-      //   !this.isLabelWithinUnit(labelCanvas, interiorPoint, mainPolygon, holes)
-      // ) {
-      //   return; // Skip this unit - label doesn't fit
-      // }
+      // ✅ NEW: Use Cesium Label instead of canvas billboard
+      // Determine font size based on polygon size (REDUCED for less overlap)
+      const fontSize = isVerySmallPolygon ? 10 : 12;  // Was 12/14 - too big!
 
       // Create distance display condition based on polygon size
       let minDistance, maxDistance;
       if (isVerySmallPolygon) {
         // Small polygons: only show when zoomed in close
         minDistance = 0;
-        maxDistance = 50; // Only visible when very close
+        maxDistance = 100;
       } else {
         // Normal polygons: show at moderate zoom levels
         minDistance = 0;
-        maxDistance = 120;
+        maxDistance = 500;
       }
 
       ds.entities.add({
@@ -568,23 +521,29 @@ export class BuildingIndoor {
         position: Cesium.Cartesian3.fromDegrees(
           interiorPoint.lon,
           interiorPoint.lat,
-          0.25 // Height will be adjusted by TwoDLayeringManager
+          0.6 // Height will be adjusted by TwoDLayeringManager
         ),
-        billboard: {
-          image: labelCanvas,
+        label: {
+          text: unit.properties.nameEn,
+          font: `bold ${fontSize}px Arial, sans-serif`,
+          fillColor: Cesium.Color.WHITE,
+          outlineColor: Cesium.Color.BLACK,
+          outlineWidth: 2,
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
           verticalOrigin: Cesium.VerticalOrigin.CENTER,
           horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
-          scale: isVerySmallPolygon ? 0.7 : 0.8, // Smaller scale for tiny units
           heightReference: Cesium.HeightReference.NONE,
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
-          // Size-based scaling
+          // ✅ Pixel-based offset scaling (better for labels)
+          pixelOffset: new Cesium.Cartesian2(0, 0),
+          // ✅ ADJUSTED: Much smaller when far to reduce overlap
           scaleByDistance: new Cesium.NearFarScalar(
-            20,
-            isVerySmallPolygon ? 1.2 : 1.0,
-            maxDistance,
-            0.4
+            50,   // Near distance: 50m
+            1.5,  // Near scale: 1.5x when zoomed in (was 1.8x)
+            400,  // Far distance: 400m
+            0.3   // Far scale: 0.3x when zoomed out (was 0.6x - too big!)
           ),
-          // Size-based visibility
+          // Distance-based visibility
           distanceDisplayCondition: new Cesium.DistanceDisplayCondition(
             minDistance,
             maxDistance
@@ -874,30 +833,55 @@ export class BuildingIndoor {
   ///Calculation/////
 
   // Create text canvas with transparent background
-  createTextCanvas(text, maxWidth = 120, maxHeight = 24) {
+  // Create text canvas with transparent background and multi-line support
+  createTextCanvas(text, maxWidth = 120, maxHeight = 50) {  // ✅ Increased maxHeight from 24 to 50
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
 
-    // Start with smaller base font
-    let fontSize = 14;
+    // ✅ INCREASED base font size from 14px to 18px
+    let fontSize = 15;  // Was 14
     context.font = `bold ${fontSize}px Arial, sans-serif`;
 
-    // Measure text and adjust if needed
-    let metrics = context.measureText(text);
-    let textWidth = metrics.width;
+    // ✅ SIMPLIFIED: Split long text into multiple lines
+    const words = text.split(' ');
+    let lines = [];
+
+    // Only split if text is very long (more than 20 characters)
+    if (text.length > 20 && words.length >= 3) {
+      // Split into 2 lines at the middle word
+      const midPoint = Math.ceil(words.length / 2);
+      lines = [
+        words.slice(0, midPoint).join(' '),
+        words.slice(midPoint).join(' ')
+      ];
+    } else {
+      // Keep as single line
+      lines = [text];
+    }
+
+    // Measure text and adjust font size if needed
+    let maxTextWidth = 0;
+    lines.forEach(line => {
+      const metrics = context.measureText(line);
+      maxTextWidth = Math.max(maxTextWidth, metrics.width);
+    });
 
     // Adjust font size to fit within maxWidth
-    while (textWidth > maxWidth - 8 && fontSize > 7) {
+    while (maxTextWidth > maxWidth - 8 && fontSize > 10) {
       fontSize--;
       context.font = `bold ${fontSize}px Arial, sans-serif`;
-      metrics = context.measureText(text);
-      textWidth = metrics.width;
+      maxTextWidth = 0;
+      lines.forEach(line => {
+        const metrics = context.measureText(line);
+        maxTextWidth = Math.max(maxTextWidth, metrics.width);
+      });
     }
 
     // Set canvas size based on text dimensions
-    const padding = 6;
-    canvas.width = Math.min(textWidth + padding, maxWidth);
-    canvas.height = Math.min(fontSize + padding, maxHeight);
+    const padding = 8;  // Increased padding
+    const lineHeight = fontSize * 1.3;  // Line spacing
+    canvas.width = Math.min(maxTextWidth + padding * 2, maxWidth);
+    canvas.height = Math.min(lineHeight * lines.length + padding, maxHeight);
 
     // Re-apply font after canvas resize
     context.font = `bold ${fontSize}px Arial, sans-serif`;
@@ -908,21 +892,20 @@ export class BuildingIndoor {
     context.clearRect(0, 0, canvas.width, canvas.height);
 
     const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
 
-    // // Semi-transparent background for better readability
-    // context.fillStyle = "rgba(255, 255, 255, 0.8)";
-    // context.roundRect(2, 2, canvas.width - 4, canvas.height - 4, 2);
-    // context.fill();
+    // ✅ Draw each line of text
+    lines.forEach((line, index) => {
+      const centerY = (canvas.height / 2) - ((lines.length - 1) * lineHeight / 2) + (index * lineHeight);
 
-    // Draw text outline for better contrast
-    context.strokeStyle = "rgba(0, 0, 0, 0.9)";
-    context.lineWidth = 1.2;
-    context.strokeText(text, centerX, centerY);
+      // Draw text outline for better contrast
+      context.strokeStyle = "rgba(0, 0, 0, 0.9)";
+      context.lineWidth = 2.5;  // Thicker outline
+      context.strokeText(line, centerX, centerY);
 
-    // Draw main text
-    context.fillStyle = "#FFFFFF";
-    context.fillText(text, centerX, centerY);
+      // Draw main text
+      context.fillStyle = "#FFFFFF";
+      context.fillText(line, centerX, centerY);
+    });
 
     return canvas;
   }
