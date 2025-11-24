@@ -457,17 +457,23 @@ export class BuildingIndoor {
 
   handleUnitLabelStateChange(labelState) {
     console.log("[BuildingIndoor] Unit label state changed:", labelState);
+    console.log("=== UNIT LABEL DIAGNOSTIC START ===");
+    console.log("[BuildingIndoor] Unit label state changed:", labelState);
+    console.log("[BuildingIndoor] Building venueId:", this.venueId);
 
     const currentHeight = this.getCameraHeight();
+    console.log("[BuildingIndoor] Camera height:", currentHeight);
 
     const activeBuilding = appState.getActiveBuilding(labelState.venueId);
     if (activeBuilding !== this) {
+      console.log("[BuildingIndoor] ❌ Not active building, removing labels");
       this.removeUnitLabels();
       return;
     }
 
     // Only show labels in 2D mode and when active
     if (!labelState.active || !appState.isIn2DMode()) {
+      console.log("[BuildingIndoor] ❌ Labels not active or not in 2D mode");
       this.removeUnitLabels();
       return;
     }
@@ -476,19 +482,42 @@ export class BuildingIndoor {
     ds.entities.removeAll();
 
     const units = this.buildingData.units?.features ?? [];
-
+    console.log("[BuildingIndoor] Total units in building:", units.length);
+    // NEW DIAGNOSTIC: Check unit data structure
+    if (units.length > 0) {
+      console.log("[BuildingIndoor] Sample unit data:", {
+        id: units[0].id,
+        properties: units[0].properties,
+        geometry: units[0].geometry ? "exists" : "missing"
+      });
+    }
     // Filter units based on level selection
     let filteredUnits = units.filter((unit) => unit.properties.nameEn);
+    console.log("[BuildingIndoor] Units with nameEn:", filteredUnits.length);
+
+    // NEW DIAGNOSTIC: Check level filtering
+    console.log("[BuildingIndoor] Filtering by levelId:", labelState.levelId);
 
     if (labelState.levelId && labelState.levelId !== "ALL") {
+      const beforeFilter = filteredUnits.length;
       filteredUnits = filteredUnits.filter(
         (unit) => unit.properties.level_id === labelState.levelId
       );
+      console.log(`[BuildingIndoor] After level filter: ${filteredUnits.length} (was ${beforeFilter})`);
+
+      // NEW DIAGNOSTIC: Show what level_ids exist
+      const uniqueLevelIds = [...new Set(units.map(u => u.properties.level_id))];
+      console.log("[BuildingIndoor] Available level_ids in units:", uniqueLevelIds);
+      console.log("[BuildingIndoor] Looking for level_id:", labelState.levelId);
+
     }
 
-    if (currentHeight > 11809450) {
-      return;
-    }
+    // if (currentHeight > 11809450) {
+    //   console.log("[BuildingIndoor] ❌ Camera too high, not showing labels");
+    //   return;
+    // }
+    console.log("[BuildingIndoor] Processing", filteredUnits.length, "units for labels");
+    console.log("=== UNIT LABEL DIAGNOSTIC END ===");
 
     filteredUnits.forEach((unit) => {
       // Extract holes if polygon has them (for donut-shaped units)
@@ -816,7 +845,7 @@ export class BuildingIndoor {
       Math.min(
         1,
         ((point.lon - lineStart.lon) * dx + (point.lat - lineStart.lat) * dy) /
-          (dx * dx + dy * dy)
+        (dx * dx + dy * dy)
       )
     );
 
@@ -961,7 +990,7 @@ export class BuildingIndoor {
     if (!this.levelBarEl) return;
     const levelsRaw =
       this.buildingData.levels &&
-      Array.isArray(this.buildingData.levels.features)
+        Array.isArray(this.buildingData.levels.features)
         ? this.buildingData.levels.features
         : [];
     const levels = levelsRaw
@@ -1063,7 +1092,7 @@ export class BuildingIndoor {
     // Get all levels, sorted by zValue descending (for UI), but for filtering, use zValue
     const levelsRaw =
       this.buildingData.levels &&
-      Array.isArray(this.buildingData.levels.features)
+        Array.isArray(this.buildingData.levels.features)
         ? this.buildingData.levels.features
         : [];
     const levels = levelsRaw
@@ -1121,7 +1150,7 @@ export class BuildingIndoor {
     if (this.highlightEntity) {
       const parentEntityId =
         this.highlightEntity.properties &&
-        this.highlightEntity.properties.parent_entity
+          this.highlightEntity.properties.parent_entity
           ? this.highlightEntity.properties.parent_entity.getValue
             ? this.highlightEntity.properties.parent_entity.getValue()
             : this.highlightEntity.properties.parent_entity
@@ -1174,7 +1203,7 @@ export class BuildingIndoor {
         // Reset polygon material to original style
         const featureType =
           this.selectedEntity.properties &&
-          this.selectedEntity.properties.feature_type
+            this.selectedEntity.properties.feature_type
             ? this.selectedEntity.properties.feature_type.getValue
               ? this.selectedEntity.properties.feature_type.getValue()
               : this.selectedEntity.properties.feature_type
@@ -1183,7 +1212,7 @@ export class BuildingIndoor {
         if (featureType === "unit") {
           const category =
             this.selectedEntity.properties &&
-            this.selectedEntity.properties.category
+              this.selectedEntity.properties.category
               ? this.selectedEntity.properties.category.getValue
                 ? this.selectedEntity.properties.category.getValue()
                 : this.selectedEntity.properties.category
@@ -1202,7 +1231,7 @@ export class BuildingIndoor {
           // Restore original door material
           const category =
             this.selectedEntity.properties &&
-            this.selectedEntity.properties.category
+              this.selectedEntity.properties.category
               ? this.selectedEntity.properties.category.getValue
                 ? this.selectedEntity.properties.category.getValue()
                 : this.selectedEntity.properties.category
@@ -1345,7 +1374,7 @@ export class BuildingIndoor {
     if (this.highlightEntity) {
       const parentEntityId =
         this.highlightEntity.properties &&
-        this.highlightEntity.properties.parent_entity
+          this.highlightEntity.properties.parent_entity
           ? this.highlightEntity.properties.parent_entity.getValue
             ? this.highlightEntity.properties.parent_entity.getValue()
             : this.highlightEntity.properties.parent_entity
@@ -1732,27 +1761,27 @@ export class BuildingIndoor {
         properties:
           featureType === "door"
             ? {
-                feature_type: featureType,
-                parent_id: featureId,
-                level_id: properties.level_id,
-                zValue: baseHeight,
-                wallHeight: wallHeight,
-                category: category,
-                venue_id: properties.venue_id,
-                // Inherit all original properties
-                ...newProperties,
-              }
+              feature_type: featureType,
+              parent_id: featureId,
+              level_id: properties.level_id,
+              zValue: baseHeight,
+              wallHeight: wallHeight,
+              category: category,
+              venue_id: properties.venue_id,
+              // Inherit all original properties
+              ...newProperties,
+            }
             : {
-                feature_type: featureType,
-                parent_id: featureId,
-                // level_id: properties.level_id,
-                zValue: baseHeight,
-                wallHeight: wallHeight,
-                category: "default",
-                venue_id: properties.venue_id,
-                // Inherit all original properties
-                ...newProperties,
-              },
+              feature_type: featureType,
+              parent_id: featureId,
+              // level_id: properties.level_id,
+              zValue: baseHeight,
+              wallHeight: wallHeight,
+              category: "default",
+              venue_id: properties.venue_id,
+              // Inherit all original properties
+              ...newProperties,
+            },
       });
 
       return wallEntity;
