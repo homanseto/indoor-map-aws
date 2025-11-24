@@ -367,7 +367,7 @@ export class NetworkService {
       venue_id: networkData.venue_id,
       display_name: networkData.displayName,
       region: networkData.region,
-      building_type: networkData.buildingType,
+      building_type: networkData.buildingType[0],
 
       // Geometry (WKT format)
       geom_wkt: wkt,

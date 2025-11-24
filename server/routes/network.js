@@ -120,7 +120,10 @@ router.get("/network_data", async (req, res) => {
         venue_id,
       });
     }
-    if (allowedBuildingType && result.buildingType !== allowedBuildingType) {
+    if (
+      allowedBuildingType &&
+      result.buildingType.replace(" ", "") !== allowedBuildingType
+    ) {
       return res
         .status(403)
         .json({ error: "Unauthorized user for this venue" });

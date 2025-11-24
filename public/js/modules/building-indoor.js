@@ -123,30 +123,30 @@ export class BuildingIndoor {
       console.log(`Added ${doorEntities.length} door entities to viewer`);
     }
 
-    // // ✅ NEW: Generate and add 3D window-walls for windows
-    // console.log("Generating 3D window-walls for building windows...");
-    // const windowWallEntities = this.generateWindowWalls();
-    // if (windowWallEntities.length > 0) {
-    //   const windowWallDataSource = new Cesium.CustomDataSource("window_walls");
-    //   // Get the original window features for customization
-    //   const windowFeatures = this.buildingData.windows.features;
+    // ✅ NEW: Generate and add 3D window-walls for windows
+    console.log("Generating 3D window-walls for building windows...");
+    const windowWallEntities = this.generateWindowWalls();
+    if (windowWallEntities.length > 0) {
+      const windowWallDataSource = new Cesium.CustomDataSource("window_walls");
+      // Get the original window features for customization
+      const windowFeatures = this.buildingData.windows.features;
 
-    //   windowWallEntities.forEach((windowWallEntity) => {
-    //     // Find the corresponding window feature for this window-wall
-    //     const originalWindow = windowFeatures.find(
-    //       (window) => windowWallEntity.id === `window-wall_${window.id}`
-    //     );
-    //     if (originalWindow) {
-    //       customizeEntityDisplayInfo(windowWallEntity, originalWindow);
-    //     }
-    //     windowWallDataSource.entities.add(windowWallEntity);
-    //   });
-    //   this.viewer.dataSources.add(windowWallDataSource);
-    //   this.dataSources["window-walls"] = windowWallDataSource;
-    //   console.log(
-    //     `Added ${windowWallEntities.length} window-wall entities to viewer`
-    //   );
-    // }
+      windowWallEntities.forEach((windowWallEntity) => {
+        // Find the corresponding window feature for this window-wall
+        const originalWindow = windowFeatures.find(
+          (window) => windowWallEntity.id === `window-wall_${window.id}`
+        );
+        if (originalWindow) {
+          customizeEntityDisplayInfo(windowWallEntity, originalWindow);
+        }
+        windowWallDataSource.entities.add(windowWallEntity);
+      });
+      this.viewer.dataSources.add(windowWallDataSource);
+      this.dataSources["window-walls"] = windowWallDataSource;
+      console.log(
+        `Added ${windowWallEntities.length} window-wall entities to viewer`
+      );
+    }
 
     for (const { dataKey, styleKey } of featureTypes) {
       if (dataKey === "occupants") {
@@ -925,6 +925,7 @@ export class BuildingIndoor {
     const label = document.createElement("label");
     label.className = "form-check-label mb-1";
     label.style.cursor = "pointer";
+    label.style.color = "white";
     const input = document.createElement("input");
     input.type = "checkbox";
     input.className = "form-check-input me-2";
