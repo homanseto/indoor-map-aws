@@ -284,6 +284,14 @@ export class Utils {
         properties.LastAmendmentDate = buildingData.LastAmendmentDate;
         properties.region = buildingData.region;
         properties.venue_id = buildingData.venue_id;
+        properties.levelEnName =
+          matchLevel && matchLevel.properties.name.en
+            ? matchLevel.properties.name.en
+            : "";
+        properties.levelZhName =
+          matchLevel && matchLevel.properties.name.zh
+            ? matchLevel.properties.name.zh
+            : "";
         properties.levelShortName = matchLevel
           ? matchLevel.properties.short_name.en
           : "";
@@ -310,6 +318,14 @@ export class Utils {
         properties.LastAmendmentDate = buildingData.LastAmendmentDate;
         properties.region = buildingData.region;
         properties.venue_id = buildingData.venue_id;
+        properties.levelEnName =
+          matchLevel && matchLevel.properties.name.en
+            ? matchLevel.properties.name.en
+            : "";
+        properties.levelZhName =
+          matchLevel && matchLevel.properties.name.zh
+            ? matchLevel.properties.name.zh
+            : "";
         properties.levelShortName = matchLevel
           ? matchLevel.properties.short_name.en
           : "";
@@ -341,6 +357,14 @@ export class Utils {
           properties.region = buildingData.region;
           properties.venue_id = buildingData.venue_id;
           properties.level_id = matchLevel ? matchLevel.id : "";
+          properties.levelEnName =
+            matchLevel && matchLevel.properties.name.en
+              ? matchLevel.properties.name.en
+              : "";
+          properties.levelZhName =
+            matchLevel && matchLevel.properties.name.zh
+              ? matchLevel.properties.name.zh
+              : "";
           properties.levelShortName = matchLevel
             ? matchLevel.properties.short_name.en
             : "";

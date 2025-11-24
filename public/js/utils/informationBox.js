@@ -17,6 +17,12 @@ function createInfoBoxHtml(properties) {
   const venue_id = properties.venue_id;
   const category = properties.category;
   const levelShortName = properties.levelShortName;
+  const levelEnName = properties.levelEnName
+    ? properties.levelEnName
+    : properties.levelShortName;
+  const levelZhName = properties.levelZhName
+    ? properties.levelZhName
+    : properties.levelShortName;
   const level_id = properties.level_id;
   const ordinal = properties.ordinal;
 
@@ -28,7 +34,8 @@ function createInfoBoxHtml(properties) {
         <tr><td><strong>Building Type:</strong></td><td>${buildingType}</td></tr>
         <tr><td><strong>Venue ID:</strong></td><td>${venue_id}</td></tr>
         <tr><td><strong>Category:</strong></td><td>${category}</td></tr>
-        <tr><td><strong>Level Name:</strong></td><td>${levelShortName}</td></tr>        
+        <tr><td><strong>Level Eng Name:</strong></td><td>${levelEnName}</td></tr>   
+        <tr><td><strong>Level Chi Name:</strong></td><td>${levelZhName}</td></tr>      
         <tr><td><strong>Level ID:</strong></td><td>${level_id}</td></tr>
         <tr><td><strong>Ordinal:</strong></td><td>${ordinal}</td></tr>
         <tr><td><strong>Eng Name:</strong></td><td>${properties.nameEn}</td></tr>

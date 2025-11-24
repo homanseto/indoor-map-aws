@@ -1287,16 +1287,23 @@ export class BuildingIndoor {
           if (originalStyle && originalStyle.material) {
             this.selectedEntity.polygon.material = originalStyle.material;
           }
+        } else if (featureType === "window-wall") {
+          const originalStyle = this.styles["window-wall"].default;
+          if (originalStyle && originalStyle.material) {
+            this.selectedEntity.polygon.material = originalStyle.material;
+          }
         }
-      } else if (
-        this.selectedEntity.billboard &&
-        this.selectedEntity._originalScale !== undefined
-      ) {
-        // Restore original icon scale
-        this.selectedEntity.billboard.scale =
-          this.selectedEntity._originalScale;
-        delete this.selectedEntity._originalScale;
       }
+
+      // else if (
+      //   this.selectedEntity.billboard &&
+      //   this.selectedEntity._originalScale !== undefined
+      // ) {
+      //   // Restore original icon scale
+      //   this.selectedEntity.billboard.scale =
+      //     this.selectedEntity._originalScale;
+      //   delete this.selectedEntity._originalScale;
+      // }
     }
 
     this.selectedEntity = null;
