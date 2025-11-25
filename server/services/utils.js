@@ -45,6 +45,7 @@ export class Utils {
       if (data.occupants && data.anchors) {
         this.joinOccupantwithAnchor(data);
       }
+
       const errorAddingVenue = this.addVenueIdToAllFeatures(data, venueId);
       if (typeof errorAddingVenue === "string") {
         return errorAddingVenue;
@@ -129,10 +130,14 @@ export class Utils {
         data.amenities.forEach((am) => {
           am.properties.venue_id = venueId;
           am.properties.zValue = am.geometry.coordinates[2];
-          am.properties.nameEn = am.properties.name.en;
-          am.properties.nameZh = am.properties.name.zh
-            ? am.properties.name.zh
-            : "";
+          am.properties.nameEn =
+            am.properties.name && am.properties.name.en
+              ? am.properties.name.en
+              : "";
+          am.properties.nameZh =
+            am.properties.name && am.properties.name.zh
+              ? am.properties.name.zh
+              : "";
           delete am.properties.name;
         });
       }
