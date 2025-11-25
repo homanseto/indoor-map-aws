@@ -565,8 +565,8 @@ export class BuildingIndoor {
         label: {
           text: unit.properties.nameEn,
           font: `bold ${fontSize}px Arial, sans-serif`,
-          fillColor: Cesium.Color.WHITE,
-          outlineColor: Cesium.Color.BLACK,
+          fillColor: Cesium.Color.BLACK,
+          outlineColor: Cesium.Color.WHITE,
           outlineWidth: 2,
           style: Cesium.LabelStyle.FILL_AND_OUTLINE,
           verticalOrigin: Cesium.VerticalOrigin.CENTER,
@@ -1826,7 +1826,7 @@ export class BuildingIndoor {
             : {
                 feature_type: featureType,
                 parent_id: featureId,
-                // level_id: properties.level_id,
+                level_id: properties.level_id,
                 zValue: baseHeight,
                 wallHeight: wallHeight,
                 category: "default",
