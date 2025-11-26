@@ -49,7 +49,7 @@ export const OpacityControl = {
     this.opacitySlider.min = 0;
     this.opacitySlider.max = this.opacityValues.length - 1;
     this.opacitySlider.step = 1;
-    this.opacitySlider.value = 1; // Default to index 1
+    this.opacitySlider.value = 0; // Default to index 0
 
     // Store 'this' reference for event handlers
     const self = this;
