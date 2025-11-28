@@ -19,6 +19,7 @@ const USER_BUILDING_TYPE = {
   ha: "HA",
   lcsd: "LCSD",
   dh: "DH",
+  mtr: "MTR",
 };
 
 // GET /venues - returns venues based on user access
@@ -43,7 +44,11 @@ router.get("/venues", async (req, res) => {
       if (!buildingType) {
         return res.status(403).json({ error: "Unauthorized user" });
       }
-      query = { buildingType };
+      query = {
+        buildingType: {
+          $in: [buildingType, "MTR"],
+        },
+      };
     }
 
     const venuesCol = await mongoDbService.getCollection(
@@ -121,6 +126,7 @@ router.get("/building_data", async (req, res) => {
     // If not admin, check buildingType matches
     if (
       allowedBuildingType &&
+      buildingDoc.buildingType !== "MTR" &&
       buildingDoc.buildingType !== allowedBuildingType
     ) {
       return res

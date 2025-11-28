@@ -246,7 +246,19 @@ async function initDemo() {
 }
 async function setupVenueDataSources(venueGeoJson) {
   const viewer = appState.getViewer();
+  // 1. Check if a data source with this name already exists
+  const existingDataSource = viewer.dataSources.getByName("venue_polygon");
+  // 2. If it exists, remove it to prevent duplicates (and ID renaming like _2)
+  if (existingDataSource.length > 0) {
+    console.log(
+      "[setupVenueDataSources] Removing existing venue_polygon data source to prevent duplicates."
+    );
+    // existingDataSource.forEach(ds => viewer.dataSources.remove(ds, true));
+    return;
+  }
+
   const venueDataSource = new Cesium.GeoJsonDataSource("venue_polygon");
+
   await venueDataSource.load(venueGeoJson, {
     stroke: new Cesium.Color(0.26, 0.52, 0.96, 0.5),
     fill: new Cesium.Color(0.26, 0.52, 0.96, 0.5),
@@ -341,7 +353,7 @@ function setupVenueClickInteraction() {
           if (
             tilesetUrl &&
             tilesetUrl ===
-            "https://data.map.gov.hk/api/3d-data/3dtiles/f2/tileset.json?key=3967f8f365694e0798af3e7678509421"
+              "https://data.map.gov.hk/api/3d-data/3dtiles/f2/tileset.json?key=3967f8f365694e0798af3e7678509421"
           ) {
             return false; // Skip only threeDTiles
           }
@@ -368,7 +380,10 @@ function setupVenueClickInteraction() {
           pf.id.properties &&
           pf.id.properties.feature_type
         ) {
-          const venueId = pf.id.id;
+          let venueId = pf.id.id;
+          if (venueId.includes("_")) {
+            venueId = venueId.split("_")[0];
+          }
           const properties = pf.id.properties;
           const featureType =
             properties && properties.feature_type
@@ -469,8 +484,24 @@ function setupVenueClickInteraction() {
                     venueId
                   );
 
-                  // Hide the venue entity
-                  pf.id.show = false;
+                  // Find and hide ALL entities related to this venue (including _2, _3, etc.)
+                  const venueDataSources =
+                    viewer.dataSources.getByName("venue_polygon");
+                  if (venueDataSources.length > 0) {
+                    const venueDataSource = venueDataSources[0];
+                    const entities = venueDataSource.entities.values;
+
+                    entities.forEach((entity) => {
+                      // Check if entity ID is the venueId OR starts with "venueId_"
+                      // This covers "12345", "12345_2", "12345_3"
+                      if (
+                        entity.id === venueId ||
+                        entity.id.startsWith(venueId + "_")
+                      ) {
+                        entity.show = false;
+                      }
+                    });
+                  }
 
                   // Show the building and initialize the level bar
                   if (typeof buildingIndoor.show === "function") {
@@ -848,7 +879,7 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
         if (venueEntity) {
           // Fly to the venue location first with custom duration
           // Small delay to ensure 3D mode is fully activated
-          await new Promise(resolve => setTimeout(resolve, 300));
+          await new Promise((resolve) => setTimeout(resolve, 300));
 
           console.log(`[Demo] Flying to building ${venueId} in 3D mode`);
 
@@ -857,11 +888,13 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
             duration: 2.0,
             offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
           });
-
-          console.log(`[Demo] Fly complete, hiding venue entity`);
-
-          // Then hide the venue entity
-          venueEntity.show = false;
+          // Hide ALL entities related to this venue ID
+          const entities = venueDataSources[0].entities.values;
+          entities.forEach((entity) => {
+            if (entity.id === venueId || entity.id.startsWith(venueId + "_")) {
+              entity.show = false;
+            }
+          });
         }
       }
 

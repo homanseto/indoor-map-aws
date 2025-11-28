@@ -51,7 +51,7 @@ class AppStateManager {
         id: "threeDTiles",
         name: "3D Buildings",
         url: "https://data.map.gov.hk/api/3d-data/3dtiles/f2/tileset.json?key=3967f8f365694e0798af3e7678509421",
-        defaultOpacity: 0.5,
+        defaultOpacity: 0.0,
         defaultVisible: true,
         style: {
           color: {
@@ -71,7 +71,7 @@ class AppStateManager {
         url: "3dtiles/pedestrian/output/tileset.json",
         //url: "http://3dmapweb3:8097/b3dm/indoor_network_mtr_3/output/tileset.json",
         defaultOpacity: 1.0,
-        defaultVisible: true,
+        defaultVisible: false,
         style: {
           show: true,
           color: "color('rgb(3, 244, 15)')",
