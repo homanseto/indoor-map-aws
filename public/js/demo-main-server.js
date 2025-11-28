@@ -380,7 +380,10 @@ function setupVenueClickInteraction() {
           pf.id.properties &&
           pf.id.properties.feature_type
         ) {
-          const venueId = pf.id.id;
+          let venueId = pf.id.id;
+          if (venueId.includes("_")) {
+            venueId = venueId.split("_")[0];
+          }
           const properties = pf.id.properties;
           const featureType =
             properties && properties.feature_type
@@ -481,8 +484,24 @@ function setupVenueClickInteraction() {
                     venueId
                   );
 
-                  // Hide the venue entity
-                  pf.id.show = false;
+                  // Find and hide ALL entities related to this venue (including _2, _3, etc.)
+                  const venueDataSources =
+                    viewer.dataSources.getByName("venue_polygon");
+                  if (venueDataSources.length > 0) {
+                    const venueDataSource = venueDataSources[0];
+                    const entities = venueDataSource.entities.values;
+
+                    entities.forEach((entity) => {
+                      // Check if entity ID is the venueId OR starts with "venueId_"
+                      // This covers "12345", "12345_2", "12345_3"
+                      if (
+                        entity.id === venueId ||
+                        entity.id.startsWith(venueId + "_")
+                      ) {
+                        entity.show = false;
+                      }
+                    });
+                  }
 
                   // Show the building and initialize the level bar
                   if (typeof buildingIndoor.show === "function") {
@@ -863,8 +882,13 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
             duration: 2.0,
             offset: new Cesium.HeadingPitchRange(0, -0.5, 0),
           });
-          // Then hide the venue entity
-          venueEntity.show = false;
+          // Hide ALL entities related to this venue ID
+          const entities = venueDataSources[0].entities.values;
+          entities.forEach((entity) => {
+            if (entity.id === venueId || entity.id.startsWith(venueId + "_")) {
+              entity.show = false;
+            }
+          });
         }
       }
 

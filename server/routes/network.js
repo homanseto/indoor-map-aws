@@ -14,6 +14,7 @@ const USER_BUILDING_TYPE = {
   ha: "HA",
   lcsd: "LCSD",
   dh: "DH",
+  mtr: "MTR",
 };
 
 // POST /testing/import-indoor-network - Import indoor network data from JSON to PostGIS
@@ -122,6 +123,7 @@ router.get("/network_data", async (req, res) => {
     }
     if (
       allowedBuildingType &&
+      result.buildingType.replace(" ", "") !== "MTR" &&
       result.buildingType.replace(" ", "") !== allowedBuildingType
     ) {
       return res
