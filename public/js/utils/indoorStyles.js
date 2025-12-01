@@ -264,19 +264,16 @@ export const indoorStyles = {
     async function detectAmenityTypes() {
       try {
         // Try to fetch the directory listing from the server
-        const response = await fetch("./images/icon/amenity/", {
-          method: "GET",
+        const response = await fetch("/api/smo3dm/icons/amenity", {
+          credentials: "same-origin",
         });
 
         if (response.ok) {
-          const html = await response.text();
+          const imageFiles = await response.json();
           // Parse HTML to extract SVG filenames
-          const svgMatches = html.match(/href="([^"]+\.svg)"/g);
-          if (svgMatches) {
-            return svgMatches
-              .map((match) => match.match(/href="([^"]+)\.svg"/)[1])
-              .filter((name) => !name.includes("/")) // Exclude subdirectories
-              .sort();
+
+          if (imageFiles) {
+            return imageFiles.map((i) => i.replace(".svg", ""));
           }
         }
       } catch (error) {
@@ -286,51 +283,51 @@ export const indoorStyles = {
         );
       }
 
-      // Return fallback list if auto-detection fails
-      return knownAmenityTypes;
+      // // Return fallback list if auto-detection fails
+      // return knownAmenityTypes;
     }
 
     // Generate amenity configuration object dynamically
     const amenityConfig = {};
 
-    // Use known types immediately (synchronous)
-    knownAmenityTypes.forEach((type) => {
-      // Special configurations for certain amenity types
-      if (type === "entry") {
-        amenityConfig[type] = {
-          image: `./images/icon/amenity/${type}.svg`,
-          show: false,
-          pixelOffset: new Cesium.Cartesian2(0, 0),
-          eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
-          alignedAxis: Cesium.Cartesian3.ZERO,
-          width: 5,
-          height: 5,
-        };
-      } else if (type === "fieldofplay") {
-        amenityConfig[type] = {
-          image: `./images/icon/amenity/${type}.svg`,
-          show: true,
-          pixelOffset: new Cesium.Cartesian2(0, 0),
-          eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
-          alignedAxis: Cesium.Cartesian3.ZERO,
-          width: 5,
-          height: 5,
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
-        };
-      } else {
-        // Standard configuration for most amenity types
-        amenityConfig[type] = {
-          image: `./images/icon/amenity/${type}.svg`,
-          show: true,
-          pixelOffset: new Cesium.Cartesian2(0, 0),
-          eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
-          alignedAxis: Cesium.Cartesian3.ZERO,
-          width: 30,
-          height: 30,
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
-        };
-      }
-    });
+    // // Use known types immediately (synchronous)
+    // knownAmenityTypes.forEach((type) => {
+    //   // Special configurations for certain amenity types
+    //   if (type === "entry") {
+    //     amenityConfig[type] = {
+    //       image: `./images/icon/amenity/${type}.svg`,
+    //       show: false,
+    //       pixelOffset: new Cesium.Cartesian2(0, 0),
+    //       eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
+    //       alignedAxis: Cesium.Cartesian3.ZERO,
+    //       width: 5,
+    //       height: 5,
+    //     };
+    //   } else if (type === "fieldofplay") {
+    //     amenityConfig[type] = {
+    //       image: `./images/icon/amenity/${type}.svg`,
+    //       show: true,
+    //       pixelOffset: new Cesium.Cartesian2(0, 0),
+    //       eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
+    //       alignedAxis: Cesium.Cartesian3.ZERO,
+    //       width: 5,
+    //       height: 5,
+    //       distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
+    //     };
+    //   } else {
+    //     // Standard configuration for most amenity types
+    //     amenityConfig[type] = {
+    //       image: `./images/icon/amenity/${type}.svg`,
+    //       show: true,
+    //       pixelOffset: new Cesium.Cartesian2(0, 0),
+    //       eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
+    //       alignedAxis: Cesium.Cartesian3.ZERO,
+    //       width: 30,
+    //       height: 30,
+    //       distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
+    //     };
+    //   }
+    // });
 
     // Add legacy configurations that might still use external URLs
     // (These will be overridden by auto-detected local icons if available)
@@ -400,19 +397,16 @@ export const indoorStyles = {
     async function detectOccupantTypes() {
       try {
         // Try to fetch the directory listing from the server
-        const response = await fetch("./images/icon/occupant/", {
-          method: "GET",
+        const response = await fetch("/api/smo3dm/icons/occupant", {
+          credentials: "same-origin",
         });
 
         if (response.ok) {
-          const html = await response.text();
+          const imageFiles = await response.json();
           // Parse HTML to extract SVG filenames
-          const svgMatches = html.match(/href="([^"]+\.svg)"/g);
-          if (svgMatches) {
-            return svgMatches
-              .map((match) => match.match(/href="([^"]+)\.svg"/)[1])
-              .filter((name) => !name.includes("/")) // Exclude subdirectories
-              .sort();
+
+          if (imageFiles) {
+            return imageFiles.map((i) => i.replace(".svg", ""));
           }
         }
       } catch (error) {
@@ -422,26 +416,26 @@ export const indoorStyles = {
         );
       }
 
-      // Return fallback list if auto-detection fails
-      return knownOccupantTypes;
+      // // Return fallback list if auto-detection fails
+      // return knownOccupantTypes;
     }
 
     // Generate occupant configuration object dynamically
     const occupantConfig = {};
 
-    // Use known types immediately (synchronous)
-    knownOccupantTypes.forEach((type) => {
-      occupantConfig[type] = {
-        image: `./images/icon/occupant/${type}.svg`,
-        show: true,
-        pixelOffset: new Cesium.Cartesian2(0, 0),
-        eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
-        alignedAxis: Cesium.Cartesian3.ZERO,
-        width: 30,
-        height: 30,
-        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
-      };
-    });
+    // // Use known types immediately (synchronous)
+    // knownOccupantTypes.forEach((type) => {
+    //   occupantConfig[type] = {
+    //     image: `./images/icon/occupant/${type}.svg`,
+    //     show: true,
+    //     pixelOffset: new Cesium.Cartesian2(0, 0),
+    //     eyeOffset: new Cesium.Cartesian3(0.0, 1.0, 0.0),
+    //     alignedAxis: Cesium.Cartesian3.ZERO,
+    //     width: 30,
+    //     height: 30,
+    //     distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 350),
+    //   };
+    // });
 
     // Async enhancement: detect and add any new icons
     detectOccupantTypes().then((detectedTypes) => {

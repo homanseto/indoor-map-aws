@@ -623,7 +623,10 @@ function setupSearchEventListeners(searchInput, dropdownContainer) {
         name: feature.properties.buildingName,
         venueId: feature.id,
         feature: feature,
-      }));
+      }))
+      .sort((a, b) => {
+        return a.name.localeCompare(b.name);
+      });
   }
 
   // Show dropdown on focus
