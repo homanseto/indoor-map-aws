@@ -1,5 +1,7 @@
 import express from "express";
 import jwt from "jsonwebtoken";
+import path from "path";
+import fs from "fs";
 import { apiKeyAuth } from "../middleware/apiKeyAuth.js";
 import { MongoDbService } from "../dbServices/MongoDbService.js";
 import { MONGO_COLLECTIONS } from "../../config/collections.js";
@@ -139,5 +141,27 @@ router.get("/building_data", async (req, res) => {
   } catch (err) {
     console.error("Error fetching building data:", err.message);
     res.status(500).json({ error: "Failed to fetch building data" });
+  }
+});
+
+router.get("/icons/:category", async (req, res) => {
+  try {
+    const category = req.params.category;
+    // Security: Only allow specific folders
+    if (!["amenity", "occupant"].includes(category)) {
+      return res.status(400).json({ error: "Invalid category" });
+    }
+    const dirPath = path.resolve(`public/images/icon/${category}`);
+    const files = await fs.readdirSync(dirPath);
+    // Return only .svg files
+    const svgFiles = files.filter((file) => file.endsWith(".svg"));
+    res.json(svgFiles);
+  } catch (err) {
+    // Handle errors (like directory not found)
+    if (err.code === "ENOENT") {
+      return res.status(404).json({ error: "Directory not found" });
+    }
+    console.error("Error reading icon directory:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });

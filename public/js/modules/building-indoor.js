@@ -168,7 +168,7 @@ export class BuildingIndoor {
       ) {
         const styledFeatures = featureCollection.features.map((feature) => {
           let category = feature.properties && feature.properties.category;
-          if (category === "opentobelow") {
+          if (category === "defibrillator") {
             console.log(category);
           }
           let restriction =

@@ -215,6 +215,7 @@ export class NetworkService {
     const features = networkData.features.filter(
       (f) => f.properties.Restricted === "N"
     );
+    // const features = networkData.features;
     const totalBatches = Math.ceil(features.length / batchSize);
     let processedFeatures = 0;
     let insertedRecords = 0;

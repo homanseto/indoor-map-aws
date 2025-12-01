@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="150" height="150"  viewBox="0 0 143.67 143.78">
+  <defs>
+    <style>
+      .cls-1 {
+        stroke: #58595b;
+        stroke-miterlimit: 10;
+        stroke-width: 2px;
+      }
+
+      .cls-1, .cls-2 {
+        fill: #fff;
+      }
+
+      .cls-3 {
+        fill: #6d6e71;
+      }
+
+      .cls-3, .cls-2 {
+        stroke-width: 0px;
+      }
+    </style>
+  </defs>
+  <g id="Layer_1" data-name="Layer 1">
+    <rect class="cls-1" x=".97" y="1.02" width="141.73" height="141.73" rx="22.68" ry="22.68"/>
+  </g>
+  <g id="icon">
+    <g>
+      <rect class="cls-3" x="16.28" y="45.06" width="30.36" height="69.71"/>
+      <rect class="cls-2" x="21.37" y="58.08" width="20.18" height="20.18"/>
+      <path class="cls-3" d="M66.44,55.81h-21.26v2.23h20.35c1.69,0,2.3,1.37,2.3,3.06v14.13c0,1.69-.61,3.06-2.3,3.06h-20.35v2.23h21.26c2.06,0,3.74-1.67,3.74-3.74v-17.25c0-2.06-1.67-3.74-3.74-3.74Z"/>
+      <path class="cls-3" d="M46.64,43.21v-2.78c0-.51-.41-.93-.93-.93h-28.5c-.51,0-.93.41-.93.93v2.78h30.36Z"/>
+      <g>
+        <polygon class="cls-3" points="28.37 75.23 25.12 75.23 25.12 63.19 28.37 66.14 28.37 75.23"/>
+        <polygon class="cls-3" points="25.12 71.98 25.12 75.23 37.16 75.23 34.21 71.98 25.12 71.98"/>
+        <rect class="cls-3" x="30.81" y="59.85" width="3.16" height="16.23" transform="translate(57.54 -3) rotate(45)"/>
+      </g>
+      <rect class="cls-3" x="97" y="45.06" width="30.36" height="69.71" transform="translate(224.35 159.84) rotate(180)"/>
+      <rect class="cls-2" x="102.08" y="58.08" width="20.18" height="20.18" transform="translate(224.35 136.34) rotate(180)"/>
+      <path class="cls-3" d="M77.2,55.81h21.26v2.23h-20.35c-1.69,0-2.3,1.37-2.3,3.06v14.13c0,1.69.61,3.06,2.3,3.06h20.35v2.23h-21.26c-2.06,0-3.74-1.67-3.74-3.74v-17.25c0-2.06,1.67-3.74,3.74-3.74Z"/>
+      <path class="cls-3" d="M97,43.21v-2.78c0-.51.41-.93.93-.93h28.5c.51,0,.93.41.93.93v2.78h-30.36Z"/>
+      <g>
+        <polygon class="cls-3" points="108.69 75.23 105.44 75.23 105.44 63.19 108.69 66.14 108.69 75.23"/>
+        <polygon class="cls-3" points="105.44 71.98 105.44 75.23 117.48 75.23 114.53 71.98 105.44 71.98"/>
+        <rect class="cls-3" x="111.13" y="59.85" width="3.16" height="16.23" transform="translate(81.07 -59.79) rotate(45)"/>
+      </g>
+    </g>
+  </g>
+</svg>

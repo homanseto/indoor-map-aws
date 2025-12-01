@@ -109,7 +109,7 @@ router.get("/test-venue-data-by-buildingType", async (req, res) => {
 
 // POST /testing/import-indoor-network - Import indoor network data from JSON to PostGIS
 router.post("/import-indoor-network", async (req, res) => {
-  const testDir = "./testing-data/network/latest";
+  const testDir = "./testing-data/network/testing";
   const failedList = [];
   try {
     const { batchSize = 50, clearExisting = true } = req.body;
