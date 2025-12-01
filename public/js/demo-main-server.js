@@ -615,6 +615,7 @@ function setupSearchEventListeners(searchInput, dropdownContainer) {
   // Extract building data from venue GeoJSON using state management
   const venueGeoJson = appState.getVenueGeoJson();
   if (venueGeoJson && venueGeoJson.features) {
+    //alphabetically
     allBuildings = venueGeoJson.features
       .filter(
         (feature) => feature.properties && feature.properties.buildingName
@@ -623,7 +624,10 @@ function setupSearchEventListeners(searchInput, dropdownContainer) {
         name: feature.properties.buildingName,
         venueId: feature.id,
         feature: feature,
-      }));
+      }))
+      .sort((a, b) => {
+        return a.name.localeCompare(b.name);
+      });
   }
 
   // Show dropdown on focus
