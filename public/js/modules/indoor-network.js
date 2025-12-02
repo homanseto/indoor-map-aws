@@ -30,11 +30,7 @@ export class IndoorNetwork {
     }
     const styledFeatures = featureCollection.features.map((feature) => {
       const restricted = feature.properties.restricted;
-      if (
-        feature.properties.iNetworkID === "a10cd38b-b725-4a1b-aa38-86be9ded7bbc"
-      ) {
-        console.log(feature);
-      }
+
       let style = this.style[restricted];
       if (!style) {
         style = this.style["Y"];

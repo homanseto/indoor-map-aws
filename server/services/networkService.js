@@ -355,6 +355,8 @@ export class NetworkService {
 
       // Access codes
       wheelchairaccess: props.WheelchairAccess,
+      wheelchairbarrier: props.WheelchairBarrier,
+      weatherproof: props.WeatherProof,
       featuretype: props.FeatureType,
 
       // Metadata fields
@@ -384,42 +386,44 @@ export class NetworkService {
         level_id, level_english_name, level_chinese_name,
         aliasname_en, aliasname_tc, highway, oneway, wheelchair, emergency, exit, restricted,
         wheelchairaccess, featuretype, creation_date, creation_by, lastamendment_date, lastamendment_by,
-        venue_id, buildingname_eng, buildingname_chi, display_name, region, building_type, geom
+        venue_id, buildingname_eng, buildingname_chi, display_name, region, building_type, geom,wheelchairbarrier,weatherproof
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
         $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
-        ST_GeomFromText($27, 4326)
+        ST_GeomFromText($27, 4326),$28,$29
       ) RETURNING pedestrianrouteid, inetworkid
     `;
 
     const values = [
-      record.pedestrianrouteid,
-      record.inetworkid,
-      record.floorpolyid,
-      record.level_id,
-      record.level_english_name,
-      record.level_chinese_name,
-      record.aliasname_en,
-      record.aliasname_tc,
-      record.highway,
-      record.oneway,
-      record.wheelchair,
-      record.emergency,
-      record.exit,
-      record.restricted,
-      record.wheelchairaccess,
-      record.featuretype,
-      record.creation_date,
-      record.creation_by,
-      record.lastamendment_date,
-      record.lastamendment_by,
-      record.venue_id,
-      record.buildingname_eng,
-      record.buildingname_chi,
-      record.display_name,
-      record.region,
-      record.building_type,
-      record.geom_wkt,
+      record.pedestrianrouteid, //1
+      record.inetworkid, //2
+      record.floorpolyid, //3
+      record.level_id, //4
+      record.level_english_name, //5
+      record.level_chinese_name, //6
+      record.aliasname_en, //7
+      record.aliasname_tc, //8
+      record.highway, //9
+      record.oneway, //10
+      record.wheelchair, //11
+      record.emergency, //12
+      record.exit, //13
+      record.restricted, //14
+      record.wheelchairaccess, //15
+      record.featuretype, //16
+      record.creation_date, //17
+      record.creation_by, //18
+      record.lastamendment_date, //19
+      record.lastamendment_by, //20
+      record.venue_id, //21
+      record.buildingname_eng, //22
+      record.buildingname_chi, //23
+      record.display_name, //24
+      record.region, //25
+      record.building_type, //26
+      record.geom_wkt, //27
+      record.wheelchairbarrier, //28
+      record.weatherproof, //29
     ];
 
     const result = await client.query(insertSQL, values);
@@ -470,6 +474,8 @@ export class NetworkService {
               exit: net.exit,
               restricted: net.restricted,
               WheelchairAccess: net.wheelchairaccess,
+              Wheelchairbarrier: net.wheelchairbarrier,
+              Weatherproof: net.weatherproof,
               feature_type: net.featuretype,
               CreationDate: net.creation_date,
               Creation_by: net.creation_by,
