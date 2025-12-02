@@ -12,6 +12,13 @@ export class IndoorNetwork {
     // this.networkVisible = true; (SSOT violation removed)
 
     this.toggleButtonEl = null; // Reference to the toggle button element
+
+    // Subscribe to barrier changes to update color dynamically
+    if (appState && typeof appState.subscribe === "function") {
+      appState.subscribe("wheelchairBarrierChanged", (data) => {
+        this.updateBarrierStyle(data.current);
+      });
+    }
   }
 
   async show() {
@@ -35,6 +42,9 @@ export class IndoorNetwork {
       if (!style) {
         style = this.style["Y"];
       }
+      // Tag the feature if it is a wheelchair barrier
+      feature._isBarrier = feature.properties.Wheelchairbarrier === 1;
+
       feature._indoorStyle = style;
       return feature;
     });
@@ -50,12 +60,22 @@ export class IndoorNetwork {
     dataSource.entities.values.forEach((entity, i) => {
       const style = styledFeatures[i]._indoorStyle;
 
+      entity._isBarrier = styledFeatures[i]._isBarrier;
       if (style) {
         entity.polyline.material = style.stroke;
+
+        entity._defaultMaterial = style.stroke;
       }
     });
     this.viewer.dataSources.add(dataSource);
     this.dataSources["Indoor-network"] = dataSource;
+    // Apply current barrier state immediately in case the toggle is already ON
+    if (
+      appState &&
+      typeof appState.getWheelchairBarrierVisible === "function"
+    ) {
+      this.updateBarrierStyle(appState.getWheelchairBarrierVisible());
+    }
   }
 
   // Apply Z-value clipping to all building entities (all feature types)
@@ -64,6 +84,7 @@ export class IndoorNetwork {
     if (!appState.getNetworkVisible()) {
       return;
     }
+    const areBarriersVisible = appState.getWheelchairBarrierVisible();
 
     Object.values(this.dataSources || {}).forEach((ds) => {
       ds.entities.values.forEach((entity) => {
@@ -145,12 +166,40 @@ export class IndoorNetwork {
 
   // Update the actual visibility of network entities
   updateNetworkVisibility() {
+    const isNetworkVisible = appState.getNetworkVisible();
+
     Object.values(this.dataSources || {}).forEach((ds) => {
       ds.entities.values.forEach((entity) => {
-        entity.show = appState.getNetworkVisible();
+        entity.show = isNetworkVisible;
       });
     });
   }
+
+  updateBarrierStyle(showBarriers) {
+    Object.values(this.dataSources || {}).forEach((ds) => {
+      ds.entities.values.forEach((entity) => {
+        // Only affect barrier entities
+        if (entity._isBarrier) {
+          if (showBarriers) {
+            // If toggle is ON: Change color to RED
+            entity.polyline.material = Cesium.Color.RED;
+          } else {
+            // If toggle is OFF: Revert to default color (Green)
+            if (entity._defaultMaterial) {
+              entity.polyline.material = entity._defaultMaterial;
+            }
+          }
+        }
+      });
+    });
+  }
+  // updateNetworkVisibility() {
+  //   Object.values(this.dataSources || {}).forEach((ds) => {
+  //     ds.entities.values.forEach((entity) => {
+  //       entity.show = appState.getNetworkVisible();
+  //     });
+  //   });
+  // }
 
   // Update toggle button appearance
   updateToggleButton() {
