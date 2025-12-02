@@ -245,26 +245,42 @@ export class Sidebar {
     });
   }
 
+  // createPNTilesToggleButton() {
+  //   // Create PNTiles visibility toggle button
+  //   this.pnTilesToggleButton = document.createElement("button");
+  //   this.pnTilesToggleButton.className = "pntiles-toggle-button";
+  //   this.pnTilesToggleButton.innerHTML = `
+  //     <span class="pntiles-icon">🚶</span>
+  //     <span class="pntiles-button-text">Toggle Pedestrian Network</span>
+  //   `;
+  //   this.pnTilesToggleButton.title = "Show/Hide 3D Pedestrian Network";
+
+  //   // Update initial state
+  //   this.updatePNTilesButtonState();
+
+  //   // Event listener for PNTiles toggle
+  //   this.pnTilesToggleButton.addEventListener("click", (e) => {
+  //     e.preventDefault();
+  //     e.stopPropagation();
+  //     const currentVisible = appState.getTilesetVisible("PNTiles");
+  //     appState.setTilesetVisible("PNTiles", !currentVisible);
+  //   });
+  // }
+
   createPNTilesToggleButton() {
     // Create PNTiles visibility toggle button
     this.pnTilesToggleButton = document.createElement("button");
-    this.pnTilesToggleButton.className = "pntiles-toggle-button";
-    this.pnTilesToggleButton.innerHTML = `
-      <span class="pntiles-icon">🚶</span>
-      <span class="pntiles-button-text">Toggle Pedestrian Network</span>
-    `;
-    this.pnTilesToggleButton.title = "Show/Hide 3D Pedestrian Network";
+    this.pnTilesToggleButton.className = "sidebar-view-btn";
+    this.pnTilesToggleButton.innerHTML = "Show Pedestrian Network";
+    this.pnTilesToggleButton.title = "Toggle 3D Pedestrian Network";
 
-    // Update initial state
-    this.updatePNTilesButtonState();
-
-    // Event listener for PNTiles toggle
-    this.pnTilesToggleButton.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const currentVisible = appState.getTilesetVisible("PNTiles");
-      appState.setTilesetVisible("PNTiles", !currentVisible);
+    this.pnTilesToggleButton.addEventListener("click", () => {
+      const isVisible = appState.getTilesetVisible("PNTiles");
+      appState.setTilesetVisible("PNTiles", !isVisible);
     });
+
+    // Append to view controls
+    this.viewControls.appendChild(this.pnTilesToggleButton);
   }
 
   updateWallButtonState() {
@@ -347,38 +363,53 @@ export class Sidebar {
   updatePNTilesButtonState() {
     if (!this.pnTilesToggleButton) return;
 
-    const pnTilesVisible = appState.getTilesetVisible("PNTiles");
-    const pnTilesLoaded = appState.isTilesetActive("PNTiles");
+    const isVisible = appState.getTilesetVisible("PNTiles");
 
-    // Button enabled when PNTiles are loaded
-    this.pnTilesToggleButton.disabled = !pnTilesLoaded;
-
-    // Update button appearance based on visibility
-    this.pnTilesToggleButton.classList.remove(
-      "pntiles-visible",
-      "pntiles-hidden"
-    );
-    if (pnTilesVisible) {
-      this.pnTilesToggleButton.classList.add("pntiles-visible");
+    // Update Main Button
+    if (isVisible) {
+      this.pnTilesToggleButton.classList.add("active");
+      this.pnTilesToggleButton.innerHTML = "Hide Pedestrian Network";
     } else {
-      this.pnTilesToggleButton.classList.add("pntiles-hidden");
-    }
-
-    // Update button text
-    const buttonText = this.pnTilesToggleButton.querySelector(
-      ".pntiles-button-text"
-    );
-    if (!pnTilesLoaded) {
-      buttonText.textContent = "Loading...";
-      this.pnTilesToggleButton.title = "Pedestrian Network is loading";
-    } else if (pnTilesVisible) {
-      buttonText.textContent = "Hide Pedestrian Network";
-      this.pnTilesToggleButton.title = "Hide 3D Pedestrian Network";
-    } else {
-      buttonText.textContent = "Show Pedestrian Network";
-      this.pnTilesToggleButton.title = "Show 3D Pedestrian Network";
+      this.pnTilesToggleButton.classList.remove("active");
+      this.pnTilesToggleButton.innerHTML = "Show Pedestrian Network";
     }
   }
+
+  // updatePNTilesButtonState() {
+  //   if (!this.pnTilesToggleButton) return;
+
+  //   const pnTilesVisible = appState.getTilesetVisible("PNTiles");
+  //   const pnTilesLoaded = appState.isTilesetActive("PNTiles");
+
+  //   // Button enabled when PNTiles are loaded
+  //   this.pnTilesToggleButton.disabled = !pnTilesLoaded;
+
+  //   // Update button appearance based on visibility
+  //   this.pnTilesToggleButton.classList.remove(
+  //     "pntiles-visible",
+  //     "pntiles-hidden"
+  //   );
+  //   if (pnTilesVisible) {
+  //     this.pnTilesToggleButton.classList.add("pntiles-visible");
+  //   } else {
+  //     this.pnTilesToggleButton.classList.add("pntiles-hidden");
+  //   }
+
+  //   // Update button text
+  //   const buttonText = this.pnTilesToggleButton.querySelector(
+  //     ".pntiles-button-text"
+  //   );
+  //   if (!pnTilesLoaded) {
+  //     buttonText.textContent = "Loading...";
+  //     this.pnTilesToggleButton.title = "Pedestrian Network is loading";
+  //   } else if (pnTilesVisible) {
+  //     buttonText.textContent = "Hide Pedestrian Network";
+  //     this.pnTilesToggleButton.title = "Hide 3D Pedestrian Network";
+  //   } else {
+  //     buttonText.textContent = "Show Pedestrian Network";
+  //     this.pnTilesToggleButton.title = "Show 3D Pedestrian Network";
+  //   }
+  // }
 
   setupEventListeners() {
     // Toggle button click
@@ -443,8 +474,9 @@ export class Sidebar {
     if (this.isVisible) return; // Don't show when sidebar is visible
 
     const buttonRect = this.toggleButton.getBoundingClientRect();
-    this.toggleTooltip.style.right = `${window.innerWidth - buttonRect.left + 10
-      }px`;
+    this.toggleTooltip.style.right = `${
+      window.innerWidth - buttonRect.left + 10
+    }px`;
     this.toggleTooltip.style.top = `${buttonRect.top}px`;
     this.toggleTooltip.classList.add("visible");
   }
@@ -511,7 +543,7 @@ export class Sidebar {
     this.updateTogglePosition();
 
     // NEW: Add class to body to trigger CSS rules
-    document.body.classList.add('sidebar-open');
+    document.body.classList.add("sidebar-open");
     // this.saveSidebarState();
   }
 
@@ -1105,6 +1137,26 @@ export class Sidebar {
       }
     );
     this.stateCleanups.push(networkRemovedCleanup);
+
+    // Subscribe to tileset visibility changes
+    const tilesetVisibilityCleanup = appState.subscribe(
+      "tilesetVisibilityChanged",
+      (data) => {
+        if (data.tilesetId === "PNTiles") {
+          this.updatePNTilesButtonState();
+        }
+      }
+    );
+    this.stateCleanups.push(tilesetVisibilityCleanup);
+
+    // NEW: Subscribe to wheelchair barrier changes
+    const barrierCleanup = appState.subscribe(
+      "wheelchairBarrierChanged",
+      () => {
+        this.updatePNTilesButtonState();
+      }
+    );
+    this.stateCleanups.push(barrierCleanup);
 
     console.log("[Sidebar] State management hooks initialized");
   }

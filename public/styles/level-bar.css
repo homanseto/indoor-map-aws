@@ -18,7 +18,7 @@
   max-width: 120px;
   backdrop-filter: blur(4px);
   /* Restrict height to avoid overlapping with bottom controls */
-  max-height: calc(100vh - 300px);
+  max-height: calc(100vh - 450px);
   /* Enable vertical scrolling if content exceeds max-height */
   overflow-y: auto;
   /* Thin scrollbar for Firefox */

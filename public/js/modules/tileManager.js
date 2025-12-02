@@ -63,6 +63,15 @@ export class TilesManager {
     });
     this.stateCleanups.push(removalCleanup);
 
+    // Subscribe to wheelchair barrier mode changes
+    const barrierCleanup = appState.subscribe(
+      "wheelchairBarrierChanged",
+      (data) => {
+        this.updatePNTilesStyle(data.current);
+      }
+    );
+    this.stateCleanups.push(barrierCleanup);
+
     console.log("[TilesManager] State management hooks established");
   }
 
@@ -245,6 +254,40 @@ export class TilesManager {
               },
             },
           });
+  }
+  /**
+   * Update PNTiles style based on wheelchair barrier mode
+   * @param {boolean} showBarriers
+   */
+  updatePNTilesStyle(showBarriers) {
+    const tileset = this.loadedTilesets.get("PNTiles");
+    if (!tileset) {
+      console.warn("[TilesManager] PNTiles not loaded, cannot apply style");
+      return;
+    }
+
+    console.log(
+      `[TilesManager] Updating PNTiles style. Show Barriers: ${showBarriers}`
+    );
+
+    if (showBarriers) {
+      // Apply the "Red Barrier" style
+      tileset.style = new Cesium.Cesium3DTileStyle({
+        color: {
+          conditions: [
+            // If wheelchairbarrier is 1, paint it RED
+            ["${wheelchairbarrier} === 1", "color('red')"],
+            // Otherwise, keep it the default green (rgb(3, 244, 15))
+            ["true", "color('rgb(3, 244, 15)')"],
+          ],
+        },
+      });
+    } else {
+      // Revert to default style (Green)
+      tileset.style = new Cesium.Cesium3DTileStyle({
+        color: "color('rgb(3, 244, 15)')",
+      });
+    }
   }
 
   /**

@@ -1,7 +1,7 @@
 import { initializeCesiumViewer } from "./cesium-config.js";
 import { BuildingIndoor } from "./modules/building-indoor.js";
 import { IndoorNetwork } from "./modules/indoor-network.js";
-import { OpacityControl, ZClippingManager } from "./utils/zClippingManager.js";
+import { OpacityControl, BarrierControl } from "./utils/OpacityControl.js";
 import { initSidebar } from "./ui/sidebar.js";
 import { createTilesManager } from "./modules/tileManager.js";
 
@@ -194,6 +194,7 @@ async function initDemo() {
   // Initialize OpacityControl after HTML is injected
   setTimeout(() => {
     OpacityControl.initOpacityControl();
+    BarrierControl.initBarrierControl();
   }, 100); // Small delay to ensure HTML is loaded
 
   // Setup wall selection override to prevent wall info boxes
@@ -335,6 +336,28 @@ function setupVenueClickInteraction() {
       appState.setProcessingClick(true);
 
       const picked = viewer.scene.pick(movement.position);
+      if (picked instanceof Cesium.Cesium3DTileFeature) {
+        console.log("[Interaction] 3D Tile Feature Clicked");
+
+        // Log properties for discovery (SSOT compliant: no global storage)
+        if (picked.content && picked.content.batchTable) {
+          const table = picked.content.batchTable;
+          // Access internal properties safely for debugging
+          const props = table._properties || table.properties;
+          if (props) {
+            console.log(
+              "✅ [3D Tile] Available Properties:",
+              Object.keys(props)
+            );
+          } else {
+            console.log("ℹ️ [3D Tile] Batch Table found:", table);
+          }
+        }
+
+        // Select it in viewer (Cesium handles the selection UI)
+        viewer.selectedEntity = picked;
+        return; // Stop processing to prevent falling through to venue logic
+      }
       const pickedFeatures = viewer.scene.drillPick(movement.position);
       if (pickedFeatures.length === 0) {
         // Clear selections for all buildings when clicking empty space using state management
@@ -962,8 +985,8 @@ async function selectBuilding(venueId, searchInput, dropdownContainer) {
     window.StateValidators = StateValidators;
     window.StateDev = StateDev;
 
-    // Export Z-clipping manager (legacy)
-    window.ZClippingManager = ZClippingManager;
+    // // Export Z-clipping manager (legacy)
+    // window.ZClippingManager = ZClippingManager;
 
     // Development tools (browser environment check)
     if (

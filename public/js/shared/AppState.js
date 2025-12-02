@@ -117,6 +117,7 @@ class AppStateManager {
 
     // Visibility tracking
     this.networkVisible = true; // Global network visibility state
+    this.wheelchairBarrierVisible = false;
     this.hiddenVenuePolygons = new Set();
     this.hiddenMTRPolygons = new Set();
 
@@ -383,6 +384,28 @@ class AppStateManager {
     // if (this.persistenceEnabled) {
     //   this.persistState();
     // }
+  }
+
+  /**
+   * Set wheelchair barrier visibility mode
+   * @param {boolean} visible
+   */
+  setWheelchairBarrierVisible(visible) {
+    if (this.wheelchairBarrierVisible === visible) return;
+
+    const previous = this.wheelchairBarrierVisible;
+    this.wheelchairBarrierVisible = visible;
+
+    this.emit("wheelchairBarrierChanged", { previous, current: visible });
+    console.log(`[AppState] Wheelchair barrier mode: ${visible}`);
+  }
+
+  /**
+   * Get wheelchair barrier visibility mode
+   * @returns {boolean}
+   */
+  getWheelchairBarrierVisible() {
+    return this.wheelchairBarrierVisible;
   }
 
   /**

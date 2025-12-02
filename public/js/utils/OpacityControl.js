@@ -20,7 +20,6 @@ import { appState } from "../shared/AppState.js";
 //     });
 //   },
 // };
-
 export const BarrierControl = {
   initBarrierControl() {
     const toggle = document.getElementById("barrier-toggle");
