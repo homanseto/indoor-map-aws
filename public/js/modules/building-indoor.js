@@ -173,6 +173,9 @@ export class BuildingIndoor {
           }
           let restriction =
             feature.properties && feature.properties.restriction;
+          if (category === "unspecified") {
+            console.log(feature);
+          }
           if (
             category === "unspecified" &&
             restriction === "restricted" &&
@@ -1255,14 +1258,22 @@ export class BuildingIndoor {
             : null;
 
         if (featureType === "unit") {
-          const category =
+          let category =
             this.selectedEntity.properties &&
             this.selectedEntity.properties.category
               ? this.selectedEntity.properties.category.getValue
                 ? this.selectedEntity.properties.category.getValue()
                 : this.selectedEntity.properties.category
               : "default";
-
+          let restriction =
+            this.selectedEntity.properties &&
+            this.selectedEntity.properties.restriction;
+          if (
+            category === "unspecified" &&
+            restriction.getValue() === "restricted"
+          ) {
+            category = "restricted";
+          }
           const originalStyle =
             this.styles.unit[category] || this.styles.unit.default;
           if (originalStyle && originalStyle.fill) {
